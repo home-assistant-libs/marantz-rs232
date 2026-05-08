@@ -860,3 +860,129 @@ def test_model_defaults_to_generic() -> None:
 def test_model_can_be_specified() -> None:
     r = MarantzLegacyReceiver("/dev/null", model=LegacyModel.SR8002)
     assert r.model is LegacyModel.SR8002
+
+
+# -- Per-model gating warnings --------------------------------------------
+
+
+async def test_sr8002_only_command_warns_on_sr7002(
+    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+) -> None:
+    """SR8002-only commands should warn when called on a non-SR8002 model."""
+    import logging
+    from marantz_rs232 import LegacyComponent2
+
+    caplog.set_level(logging.WARNING)
+    mock_serial.written.clear()
+
+    await receiver.main.set_component2(LegacyComponent2.MAIN)
+
+    # The command is still sent (graceful fallback) ...
+    assert b"@CM2:1\r" in mock_serial.written
+    # ... but a warning was logged.
+    assert any("SR8002-only" in rec.message for rec in caplog.records)
+
+
+async def test_sr8002_only_command_silent_on_sr8002_model(
+    mock_serial: _MockSerial, caplog
+) -> None:
+    """The same command should not warn when the model is set to SR8002."""
+    import logging
+    from marantz_rs232 import LegacyComponent2
+
+    recv = MarantzLegacyReceiver("/dev/ttyUSB0", model=LegacyModel.SR8002)
+    mock_serial.query_responses = {"PWR": ["PWR:2"]}
+
+    async def fake_open(*_a, **_kw):
+        return mock_serial.reader, mock_serial.writer
+
+    caplog.set_level(logging.WARNING)
+    with patch(
+        "marantz_rs232.legacy.receiver.serialx.open_serial_connection",
+        side_effect=fake_open,
+    ):
+        await recv.connect()
+        try:
+            mock_serial.written.clear()
+            caplog.clear()
+            await recv.main.set_component2(LegacyComponent2.MAIN)
+            assert b"@CM2:1\r" in mock_serial.written
+            assert not any(
+                "SR8002-only" in rec.message for rec in caplog.records
+            )
+        finally:
+            await recv.disconnect()
+
+
+async def test_multi_room_b_warns_on_sr7002(
+    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+) -> None:
+    """Sending via the `=` separator should warn when model isn't SR8002."""
+    import logging
+
+    caplog.set_level(logging.WARNING)
+    mock_serial.written.clear()
+
+    await receiver.multi_room_b.power_on()
+
+    assert b"@MPW=2\r" in mock_serial.written
+    assert any("SR8002" in rec.message for rec in caplog.records)
+
+
+async def test_warning_only_logged_once_per_feature(
+    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+) -> None:
+    """Repeated calls to the same SR8002-only feature warn once, not every time."""
+    import logging
+    from marantz_rs232 import LegacyComponent2
+
+    caplog.set_level(logging.WARNING)
+
+    await receiver.main.set_component2(LegacyComponent2.MAIN)
+    await receiver.main.set_component2(LegacyComponent2.MULTI)
+    await receiver.main.set_component2(LegacyComponent2.MAIN)
+
+    component2_warnings = [
+        rec for rec in caplog.records if "Component2" in rec.message
+    ]
+    assert len(component2_warnings) == 1
+
+
+async def test_hd_radio_query_warns_on_sr7002(
+    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+) -> None:
+    """HD Radio metadata queries warn on non-SR8002 models."""
+    import logging
+
+    caplog.set_level(logging.WARNING)
+
+    await receiver.query_hd_radio_metadata()
+
+    assert any("HD Radio" in rec.message for rec in caplog.records)
+
+
+async def test_digital_auto_tuner_mode_warns_on_sr7002(
+    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+) -> None:
+    """LegacyTunerMode.DIGITAL_AUTO is HD-only and warns on non-SR8002 models."""
+    import logging
+
+    caplog.set_level(logging.WARNING)
+
+    await receiver.main.set_tuner_mode(LegacyTunerMode.DIGITAL_AUTO)
+
+    assert any("HD Radio" in rec.message for rec in caplog.records)
+
+
+async def test_non_hd_tuner_mode_does_not_warn(
+    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+) -> None:
+    """Setting AUTO or MONO on the SR7002 should not trigger warnings."""
+    import logging
+
+    caplog.set_level(logging.WARNING)
+
+    await receiver.main.set_tuner_mode(LegacyTunerMode.AUTO)
+    await receiver.main.set_tuner_mode(LegacyTunerMode.MONO)
+
+    assert not any("SR8002" in rec.message for rec in caplog.records)

@@ -14,6 +14,7 @@ import asyncio
 import sys
 
 from . import (
+    LegacyModel,
     MarantzLegacyReceiver,
     MarantzReceiver,
     ReceiverState,
@@ -305,10 +306,10 @@ async def _run_modern(port: str, probe_sources: bool) -> None:
         await receiver.disconnect()
 
 
-async def _run_legacy(port: str) -> None:
-    receiver = MarantzLegacyReceiver(port)
+async def _run_legacy(port: str, model: LegacyModel = LegacyModel.GENERIC) -> None:
+    receiver = MarantzLegacyReceiver(port, model=model)
 
-    print(f"Connecting to {port} (legacy protocol)...")
+    print(f"Connecting to {port} (legacy protocol, model={model.value})...")
     try:
         await receiver.connect()
         print("Querying receiver state...")
@@ -323,7 +324,13 @@ async def _run_legacy(port: str) -> None:
         await receiver.disconnect()
 
 
-async def _run(port: str, probe_sources: bool, legacy: bool, detect: bool) -> None:
+async def _run(
+    port: str,
+    probe_sources: bool,
+    legacy: bool,
+    detect: bool,
+    legacy_model: LegacyModel,
+) -> None:
     if detect:
         print(f"Probing protocol on {port}...")
         try:
@@ -333,13 +340,13 @@ async def _run(port: str, probe_sources: bool, legacy: bool, detect: bool) -> No
             sys.exit(1)
         print(f"Detected: {cls.__name__}")
         if cls is MarantzLegacyReceiver:
-            await _run_legacy(port)
+            await _run_legacy(port, legacy_model)
             return
         await _run_modern(port, probe_sources)
         return
 
     if legacy:
-        await _run_legacy(port)
+        await _run_legacy(port, legacy_model)
         return
 
     await _run_modern(port, probe_sources)
@@ -365,12 +372,30 @@ def main() -> None:
         action="store_true",
         help="Auto-detect which protocol the receiver speaks before connecting",
     )
+    parser.add_argument(
+        "--model",
+        choices=[m.value for m in LegacyModel],
+        default=LegacyModel.GENERIC.value,
+        help=(
+            "Specific legacy model. Picks generic baseline by default; "
+            "select SR8002 to silence warnings about Multi Room B / HD Radio "
+            "extensions and unlock those features."
+        ),
+    )
     args = parser.parse_args()
 
     if args.legacy and args.detect:
         parser.error("--legacy and --detect are mutually exclusive")
 
-    asyncio.run(_run(args.port, args.probe, args.legacy, args.detect))
+    asyncio.run(
+        _run(
+            args.port,
+            args.probe,
+            args.legacy,
+            args.detect,
+            LegacyModel(args.model),
+        )
+    )
 
 
 if __name__ == "__main__":

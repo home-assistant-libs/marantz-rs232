@@ -291,6 +291,7 @@ class LegacyMainPlayer:
 
     async def set_component2(self, mode: LegacyComponent2) -> None:
         """Set component2 routing (SR8002 only)."""
+        self._receiver._check_sr8002("Component2 select (CM2)")
         await self._receiver._send_command("CM2", mode.value)
 
     # ----- Surround / processing --------------------------------------------
@@ -444,10 +445,12 @@ class LegacyMainPlayer:
 
     async def tuner_hd_auto_up(self) -> None:
         """HD Radio auto-up (SR8002 only)."""
+        self._receiver._check_sr8002("HD Radio tuner auto-up (TFQ:5)")
         await self._receiver._send_command("TFQ", "5")
 
     async def tuner_hd_auto_down(self) -> None:
         """HD Radio auto-down (SR8002 only)."""
+        self._receiver._check_sr8002("HD Radio tuner auto-down (TFQ:6)")
         await self._receiver._send_command("TFQ", "6")
 
     async def set_tuner_preset(self, preset: int) -> None:
@@ -468,6 +471,8 @@ class LegacyMainPlayer:
         await self._receiver._send_command("TPR", "4")
 
     async def set_tuner_mode(self, mode: LegacyTunerMode) -> None:
+        if mode is LegacyTunerMode.DIGITAL_AUTO:
+            self._receiver._check_sr8002("HD Radio digital-auto tuner mode (TMD:3)")
         await self._receiver._send_command("TMD", mode.value)
 
     async def tuner_mode_toggle(self) -> None:

@@ -161,6 +161,23 @@ class MarantzLegacyReceiver:
         self._pending_queries: list[PendingQuery] = []
         self._write_lock = asyncio.Lock()
         self._connected = False
+        # Track which SR8002-only features we've already warned about so we
+        # don't spam the log on every call.
+        self._warned_sr8002_features: set[str] = set()
+
+    def _check_sr8002(self, feature: str) -> None:
+        """Warn (once per feature) if the current model isn't SR8002."""
+        if self._model is LegacyModel.SR8002:
+            return
+        if feature in self._warned_sr8002_features:
+            return
+        self._warned_sr8002_features.add(feature)
+        _LOGGER.warning(
+            "%s is an SR8002-only feature; current model is %s. "
+            "The receiver will likely ignore this command.",
+            feature,
+            self._model.value,
+        )
 
     @property
     def model(self) -> LegacyModel:
@@ -233,11 +250,7 @@ class MarantzLegacyReceiver:
 
     async def query_multi_room_b(self) -> None:
         """Query Multi Room B (`=` separator) state. SR8002 only."""
-        if self._model is not LegacyModel.SR8002:
-            _LOGGER.warning(
-                "Querying Multi Room B but model is %s; SR8002-only feature",
-                self._model.value,
-            )
+        self._check_sr8002("Multi Room B")
         for prefix in _MR_B_QUERY_PREFIXES:
             try:
                 await self._query(prefix, separator="=")
@@ -246,11 +259,7 @@ class MarantzLegacyReceiver:
 
     async def query_hd_radio_metadata(self) -> None:
         """Query HD Radio metadata (`*` separator). SR8002 only."""
-        if self._model is not LegacyModel.SR8002:
-            _LOGGER.warning(
-                "Querying HD Radio metadata but model is %s; SR8002-only feature",
-                self._model.value,
-            )
+        self._check_sr8002("HD Radio metadata")
         for prefix in ("CHN", "ARN", "SON", "CTN"):
             try:
                 await self._query(prefix, separator="*")
@@ -262,6 +271,7 @@ class MarantzLegacyReceiver:
     ) -> None:
         assert self._writer is not None
         if separator == "=":
+            self._check_sr8002("Multi Room B (`=` separator)")
             msg = encode_set_command_b(prefix, payload)
         else:
             msg = encode_set_command(prefix, payload)
@@ -296,8 +306,10 @@ class MarantzLegacyReceiver:
 
         try:
             if separator == "=":
+                self._check_sr8002("Multi Room B (`=` separator)")
                 msg = encode_query_b(prefix)
             elif separator == "*":
+                self._check_sr8002("HD Radio metadata (`*` separator)")
                 msg = f"@{prefix}*?\r".encode("ascii")
             else:
                 msg = encode_query(prefix)
