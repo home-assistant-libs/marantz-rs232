@@ -2132,3 +2132,267 @@ async def test_headphone_eq_event(receiver, mock_serial):
     await asyncio.sleep(0.1)
 
     assert states[-1].main_zone.headphone_eq is True
+
+
+# ============================================================
+# Phase 3: Top-level new prefixes (VS, TR, SY, MN, MS smart select)
+# ============================================================
+
+
+# -- VS: HDMI / Video --
+
+
+async def test_set_aspect(receiver, mock_serial):
+    await receiver.main.set_aspect(AspectMode.FULL)
+    assert b"VSASPFUL\r" in mock_serial.written_data
+
+
+async def test_set_hdmi_monitor(receiver, mock_serial):
+    await receiver.main.set_hdmi_monitor(HDMIMonitor.MONITOR_1)
+    assert b"VSMONI1\r" in mock_serial.written_data
+
+
+async def test_set_hdmi_audio_output(receiver, mock_serial):
+    await receiver.main.set_hdmi_audio_output(HDMIAudioOutput.TV)
+    assert b"VSAUDIO TV\r" in mock_serial.written_data
+
+
+async def test_set_hdmi_resolution(receiver, mock_serial):
+    await receiver.main.set_hdmi_resolution(HDMIResolution.K4)
+    assert b"VSSC4K\r" in mock_serial.written_data
+
+
+async def test_set_video_process_mode(receiver, mock_serial):
+    await receiver.main.set_video_process_mode(VideoProcessMode.MOVIE)
+    assert b"VSVPMMOVI\r" in mock_serial.written_data
+
+
+async def test_vertical_stretch_on(receiver, mock_serial):
+    await receiver.main.vertical_stretch_on()
+    assert b"VSVST ON\r" in mock_serial.written_data
+
+
+# -- VS event tests --
+
+
+async def test_hdmi_monitor_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("VSMONI2")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.hdmi_monitor == HDMIMonitor.MONITOR_2
+
+
+async def test_hdmi_audio_output_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("VSAUDIO TV")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.hdmi_audio_output == HDMIAudioOutput.TV
+
+
+async def test_hdmi_resolution_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("VSSC10P")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.hdmi_resolution == HDMIResolution.P1080
+
+
+async def test_video_process_mode_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("VSVPMGAME")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.video_process_mode == VideoProcessMode.GAME
+
+
+# -- TR: Triggers --
+
+
+async def test_trigger_1_on(receiver, mock_serial):
+    await receiver.main.trigger_1_on()
+    assert b"TR1 ON\r" in mock_serial.written_data
+
+
+async def test_trigger_1_off(receiver, mock_serial):
+    await receiver.main.trigger_1_off()
+    assert b"TR1 OFF\r" in mock_serial.written_data
+
+
+async def test_trigger_2_on(receiver, mock_serial):
+    await receiver.main.trigger_2_on()
+    assert b"TR2 ON\r" in mock_serial.written_data
+
+
+async def test_trigger_1_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("TR1 ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.trigger_1 is True
+
+
+async def test_trigger_2_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("TR2 ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.trigger_2 is True
+
+
+# -- SY: Lock --
+
+
+async def test_remote_lock_on(receiver, mock_serial):
+    await receiver.main.remote_lock_on()
+    assert b"SYREMOTE LOCK ON\r" in mock_serial.written_data
+
+
+async def test_remote_lock_off(receiver, mock_serial):
+    await receiver.main.remote_lock_off()
+    assert b"SYREMOTE LOCK OFF\r" in mock_serial.written_data
+
+
+async def test_panel_lock_on(receiver, mock_serial):
+    await receiver.main.panel_lock_on()
+    assert b"SYPANEL LOCK ON\r" in mock_serial.written_data
+
+
+async def test_panel_lock_with_volume_on(receiver, mock_serial):
+    await receiver.main.panel_lock_with_volume_on()
+    assert b"SYPANEL+V LOCK ON\r" in mock_serial.written_data
+
+
+async def test_panel_lock_off(receiver, mock_serial):
+    await receiver.main.panel_lock_off()
+    assert b"SYPANEL LOCK OFF\r" in mock_serial.written_data
+
+
+async def test_remote_lock_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("SYREMOTE LOCK ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.remote_lock is True
+
+
+async def test_panel_lock_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("SYPANEL+V LOCK ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.panel_lock is True
+
+
+# -- MN: Cursor / Menu --
+
+
+async def test_cursor_up(receiver, mock_serial):
+    await receiver.main.cursor_up()
+    assert b"MNCUP\r" in mock_serial.written_data
+
+
+async def test_cursor_down(receiver, mock_serial):
+    await receiver.main.cursor_down()
+    assert b"MNCDN\r" in mock_serial.written_data
+
+
+async def test_cursor_left(receiver, mock_serial):
+    await receiver.main.cursor_left()
+    assert b"MNCLT\r" in mock_serial.written_data
+
+
+async def test_cursor_right(receiver, mock_serial):
+    await receiver.main.cursor_right()
+    assert b"MNCRT\r" in mock_serial.written_data
+
+
+async def test_enter(receiver, mock_serial):
+    await receiver.main.enter()
+    assert b"MNENT\r" in mock_serial.written_data
+
+
+async def test_back(receiver, mock_serial):
+    await receiver.main.back()
+    assert b"MNRTN\r" in mock_serial.written_data
+
+
+async def test_menu_on(receiver, mock_serial):
+    await receiver.main.menu_on()
+    assert b"MNMEN ON\r" in mock_serial.written_data
+
+
+async def test_menu_off(receiver, mock_serial):
+    await receiver.main.menu_off()
+    assert b"MNMEN OFF\r" in mock_serial.written_data
+
+
+async def test_option(receiver, mock_serial):
+    await receiver.main.option()
+    assert b"MNOPT\r" in mock_serial.written_data
+
+
+async def test_info(receiver, mock_serial):
+    await receiver.main.info()
+    assert b"MNINF\r" in mock_serial.written_data
+
+
+async def test_mn_response_swallowed(receiver, mock_serial, caplog):
+    """MN responses should not produce warnings or change state."""
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("MNCUP")
+    await asyncio.sleep(0.1)
+
+    assert len(states) == 0
+
+
+# -- MS: Smart Select --
+
+
+async def test_smart_select(receiver, mock_serial):
+    await receiver.main.smart_select(3)
+    assert b"MSSMART3\r" in mock_serial.written_data
+
+
+async def test_smart_select_memory(receiver, mock_serial):
+    await receiver.main.smart_select_memory(2)
+    assert b"MSSMART2 MEMORY\r" in mock_serial.written_data
+
+
+async def test_smart_select_invalid_raises():
+    from marantz_rs232 import MarantzReceiver as MR
+    recv = MR("/dev/null")
+    with pytest.raises(ValueError):
+        await recv.main.smart_select(6)
+
+
+async def test_ms_smart_event_does_not_change_surround(receiver, mock_serial):
+    """MSSMART responses should not be parsed as a surround mode."""
+    receiver._state.main_zone.surround_mode = "STEREO"
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("MSSMART1")
+    await asyncio.sleep(0.1)
+
+    assert receiver._state.main_zone.surround_mode == "STEREO"
+    assert len(states) == 0
