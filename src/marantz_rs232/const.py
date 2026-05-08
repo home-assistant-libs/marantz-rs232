@@ -25,9 +25,30 @@ _SINGLE_RESPONSE_PREFIXES = (
     "SLP",
     "ECO",
     "STBY",
+    "Z2STBY",
+    "Z2SLP",
+    "Z2CS",
+    "Z2HPF",
+    "Z3STBY",
+    "Z3SLP",
+    "Z3CS",
+    "Z3HPF",
+    "Z4SLP",
 )
 
-_MULTI_RESPONSE_PREFIXES = ("CV", "PS", "Z2", "Z3")
+_MULTI_RESPONSE_PREFIXES = (
+    "CV",
+    "PS",
+    "Z2",
+    "Z3",
+    "Z4",
+    "Z2CV",
+    "Z2PS",
+    "Z3CV",
+    "Z3PS",
+    "VS",
+    "TR",
+)
 
 
 class InputSource(Enum):
@@ -152,3 +173,62 @@ class TunerBand(Enum):
 class TunerMode(Enum):
     AUTO = "AUTO"
     MANUAL = "MANUAL"
+
+
+class ZoneChannelMode(Enum):
+    STEREO = "ST"
+    MONO = "MONO"
+
+
+class DialogEnhancer(Enum):
+    OFF = "OFF"
+    LOW = "LOW"
+    MED = "MED"
+    HIGH = "HIGH"
+
+
+class DComp(Enum):
+    OFF = "OFF"
+    LOW = "LOW"
+    MID = "MID"
+    HIGH = "HIGH"
+
+
+class MDAX(Enum):
+    OFF = "OFF"
+    LOW = "LOW"
+    MID = "MID"
+    HI = "HI"
+
+
+class HDMIMonitor(Enum):
+    AUTO = "MONIAUTO"
+    MONITOR_1 = "MONI1"
+    MONITOR_2 = "MONI2"
+
+
+class HDMIAudioOutput(Enum):
+    AMP = "AUDIO AMP"
+    TV = "AUDIO TV"
+
+
+class HDMIResolution(Enum):
+    AUTO = "SCAUTO"
+    P480 = "SC48P"
+    I1080 = "SC10I"
+    P720 = "SC72P"
+    P1080 = "SC10P"
+    P1080_24 = "SC10P24"
+    K4 = "SC4K"
+    K4_60 = "SC4KF"
+
+
+class VideoProcessMode(Enum):
+    AUTO = "VPMAUTO"
+    GAME = "VPMGAME"
+    MOVIE = "VPMMOVI"
+
+
+class AspectMode(Enum):
+    NORMAL = "ASPNRM"
+    FULL = "ASPFUL"

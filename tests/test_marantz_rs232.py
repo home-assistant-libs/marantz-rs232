@@ -14,19 +14,29 @@ from conftest import (
 from marantz_rs232 import (
     _MULTI_RESPONSE_PREFIXES,
     _SINGLE_RESPONSE_PREFIXES,
+    AspectMode,
     AudioDecodeMode,
+    DComp,
+    DialogEnhancer,
     DigitalInputMode,
     DimmerMode,
     DRC,
     DynamicVolume,
     EcoMode,
+    HDMIAudioOutput,
+    HDMIMonitor,
+    HDMIResolution,
     InputSource,
+    MDAX,
     MainZoneState,
     MarantzReceiver,
     MultEQ,
     ReceiverState,
     TunerBand,
     TunerMode,
+    VideoProcessMode,
+    Zone4State,
+    ZoneChannelMode,
     _channel_volume_to_param,
     _parse_channel_volume_param,
     _parse_volume_param,
@@ -1538,3 +1548,327 @@ async def test_disconnect_notifies_none(receiver, mock_serial):
     await receiver.disconnect()
 
     assert states[-1] is None
+
+
+# ============================================================
+# Phase 1: Zone 2/3 extensions + Zone 4
+# ============================================================
+
+
+# -- Zone 2 extended commands --
+
+
+async def test_zone2_set_sleep(receiver, mock_serial):
+    await receiver.zone_2.set_sleep(30)
+    assert b"Z2SLP030\r" in mock_serial.written_data
+
+
+async def test_zone2_sleep_off(receiver, mock_serial):
+    await receiver.zone_2.sleep_off()
+    assert b"Z2SLPOFF\r" in mock_serial.written_data
+
+
+async def test_zone2_set_auto_standby(receiver, mock_serial):
+    await receiver.zone_2.set_auto_standby("4H")
+    assert b"Z2STBY4H\r" in mock_serial.written_data
+
+
+async def test_zone2_auto_standby_off(receiver, mock_serial):
+    await receiver.zone_2.auto_standby_off()
+    assert b"Z2STBYOFF\r" in mock_serial.written_data
+
+
+async def test_zone2_set_channel_mode_stereo(receiver, mock_serial):
+    await receiver.zone_2.set_channel_mode(ZoneChannelMode.STEREO)
+    assert b"Z2CSST\r" in mock_serial.written_data
+
+
+async def test_zone2_set_channel_mode_mono(receiver, mock_serial):
+    await receiver.zone_2.set_channel_mode(ZoneChannelMode.MONO)
+    assert b"Z2CSMONO\r" in mock_serial.written_data
+
+
+async def test_zone2_channel_volume_up(receiver, mock_serial):
+    await receiver.zone_2.channel_volume_up("FL")
+    assert b"Z2CVFL UP\r" in mock_serial.written_data
+
+
+async def test_zone2_set_channel_volume(receiver, mock_serial):
+    await receiver.zone_2.set_channel_volume("FR", 3.0)
+    assert b"Z2CVFR 53\r" in mock_serial.written_data
+
+
+async def test_zone2_hpf_on(receiver, mock_serial):
+    await receiver.zone_2.hpf_on()
+    assert b"Z2HPFON\r" in mock_serial.written_data
+
+
+async def test_zone2_hpf_off(receiver, mock_serial):
+    await receiver.zone_2.hpf_off()
+    assert b"Z2HPFOFF\r" in mock_serial.written_data
+
+
+async def test_zone2_set_bass(receiver, mock_serial):
+    await receiver.zone_2.set_bass(3)
+    assert b"Z2PSBAS 53\r" in mock_serial.written_data
+
+
+async def test_zone2_bass_up(receiver, mock_serial):
+    await receiver.zone_2.bass_up()
+    assert b"Z2PSBAS UP\r" in mock_serial.written_data
+
+
+async def test_zone2_set_treble(receiver, mock_serial):
+    await receiver.zone_2.set_treble(-2)
+    assert b"Z2PSTRE 48\r" in mock_serial.written_data
+
+
+async def test_zone2_treble_down(receiver, mock_serial):
+    await receiver.zone_2.treble_down()
+    assert b"Z2PSTRE DOWN\r" in mock_serial.written_data
+
+
+# -- Zone 3 extended commands --
+
+
+async def test_zone3_set_sleep(receiver, mock_serial):
+    await receiver.zone_3.set_sleep(15)
+    assert b"Z3SLP015\r" in mock_serial.written_data
+
+
+async def test_zone3_set_auto_standby(receiver, mock_serial):
+    await receiver.zone_3.set_auto_standby("8H")
+    assert b"Z3STBY8H\r" in mock_serial.written_data
+
+
+async def test_zone3_set_channel_mode(receiver, mock_serial):
+    await receiver.zone_3.set_channel_mode(ZoneChannelMode.MONO)
+    assert b"Z3CSMONO\r" in mock_serial.written_data
+
+
+async def test_zone3_set_channel_volume(receiver, mock_serial):
+    await receiver.zone_3.set_channel_volume("FL", -5.0)
+    assert b"Z3CVFL 45\r" in mock_serial.written_data
+
+
+async def test_zone3_hpf_on(receiver, mock_serial):
+    await receiver.zone_3.hpf_on()
+    assert b"Z3HPFON\r" in mock_serial.written_data
+
+
+async def test_zone3_set_bass(receiver, mock_serial):
+    await receiver.zone_3.set_bass(5)
+    assert b"Z3PSBAS 55\r" in mock_serial.written_data
+
+
+# -- Zone 4 commands --
+
+
+async def test_zone4_power_on(receiver, mock_serial):
+    await receiver.zone_4.power_on()
+    assert b"Z4ON\r" in mock_serial.written_data
+
+
+async def test_zone4_power_standby(receiver, mock_serial):
+    await receiver.zone_4.power_standby()
+    assert b"Z4OFF\r" in mock_serial.written_data
+
+
+async def test_zone4_select_input_source(receiver, mock_serial):
+    await receiver.zone_4.select_input_source(InputSource.DVD)
+    assert b"Z4DVD\r" in mock_serial.written_data
+
+
+async def test_zone4_cancel_input_source(receiver, mock_serial):
+    await receiver.zone_4.cancel_input_source()
+    assert b"Z4SOURCE\r" in mock_serial.written_data
+
+
+async def test_zone4_set_sleep(receiver, mock_serial):
+    await receiver.zone_4.set_sleep(45)
+    assert b"Z4SLP045\r" in mock_serial.written_data
+
+
+async def test_zone4_sleep_off(receiver, mock_serial):
+    await receiver.zone_4.sleep_off()
+    assert b"Z4SLPOFF\r" in mock_serial.written_data
+
+
+# -- Zone 2/3/4 event tests --
+
+
+async def test_zone2_sleep_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z2SLP060")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_2.sleep == "060"
+
+
+async def test_zone2_sleep_off_event(receiver, mock_serial):
+    receiver._state.zone_2.sleep = "030"
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z2SLPOFF")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_2.sleep is None
+
+
+async def test_zone2_auto_standby_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z2STBY4H")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_2.auto_standby == "4H"
+
+
+async def test_zone2_channel_mode_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z2CSMONO")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_2.channel_mode == ZoneChannelMode.MONO
+
+
+async def test_zone2_hpf_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z2HPFON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_2.hpf is True
+
+
+async def test_zone2_channel_volume_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z2CVFL 52")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_2.channel_volumes["FL"] == 2.0
+
+
+async def test_zone2_bass_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z2PSBAS 55")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_2.bass == 5
+
+
+async def test_zone2_treble_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z2PSTRE 47")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_2.treble == -3
+
+
+async def test_zone3_sleep_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z3SLP120")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_3.sleep == "120"
+
+
+async def test_zone3_channel_mode_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z3CSMONO")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_3.channel_mode == ZoneChannelMode.MONO
+
+
+async def test_zone4_power_on_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z4ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_4.power is True
+
+
+async def test_zone4_input_source_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z4BD")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_4.input_source == InputSource.BD
+
+
+async def test_zone4_source_cancel_event(receiver, mock_serial):
+    receiver._state.zone_4.input_source = InputSource.BD
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z4SOURCE")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_4.input_source is None
+
+
+async def test_zone4_sleep_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("Z4SLP030")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].zone_4.sleep == "030"
+
+
+# -- Zone 2/3 query tests for new prefixes --
+
+
+async def test_zone2_query_mute(receiver, mock_serial):
+    """Querying Z2MU returns response with prefix Z2MU and matches pending future."""
+
+    async def respond():
+        await asyncio.sleep(0.05)
+        mock_serial.inject_response("Z2MUOFF")
+
+    task = asyncio.create_task(respond())
+    result = await receiver.zone_2.query_mute()
+    await task
+    assert result is False
+
+
+# -- Zone 4 state tests --
+
+
+def test_zone4_initial_state():
+    state = Zone4State()
+    assert state.power is None
+    assert state.input_source is None
+    assert state.sleep is None
+
+
+def test_receiver_state_zone4():
+    state = ReceiverState()
+    assert state.zone_4.power is None
+    state.zone_4.power = True
+    copy = state.copy()
+    copy.zone_4.power = False
+    assert state.zone_4.power is True

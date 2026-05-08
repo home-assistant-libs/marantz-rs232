@@ -13,33 +13,45 @@ from .const import (
     COMMAND_TIMEOUT,
     CR,
     AudioDecodeMode,
+    DComp,
+    DialogEnhancer,
     DigitalInputMode,
     DimmerMode,
     DRC,
     DynamicVolume,
     EcoMode,
+    HDMIAudioOutput,
+    HDMIMonitor,
+    HDMIResolution,
     InputSource,
+    MDAX,
     MULTI_RESPONSE_DELAY,
     MultEQ,
     PROBE_TIMEOUT,
     TunerBand,
     TunerMode,
+    VideoProcessMode,
+    ZoneChannelMode,
     _MULTI_RESPONSE_PREFIXES,
     _SINGLE_RESPONSE_PREFIXES,
 )
-from .players import MainPlayer, ZonePlayer
+from .players import MainPlayer, Zone4Player, ZonePlayer
 from .protocol import (
     PendingQuery,
     _ZONE_VOL_RE,
     parse_channel_volume_param,
     parse_volume_param,
 )
-from .state import MainZoneState, ReceiverState, ZoneState
+from .state import MainZoneState, ReceiverState, Zone4State, ZoneState
 
 _LOGGER = logging.getLogger(__name__)
 
 
 StateCallback = Callable[[ReceiverState | None], None]
+
+
+# Zone 2/3 sub-prefixes ordered longest-first so startswith matching is unambiguous.
+_ZONE_SUB_PREFIXES = ("STBY", "SLP", "MU", "CS", "CV", "HPF", "PS")
 
 
 class MarantzReceiver:
@@ -60,6 +72,12 @@ class MarantzReceiver:
             input_source_command="Z2",
             volume_command="Z2",
             mute_command="Z2MU",
+            sleep_command="Z2SLP",
+            auto_standby_command="Z2STBY",
+            channel_mode_command="Z2CS",
+            channel_volume_command="Z2CV",
+            hpf_command="Z2HPF",
+            param_command="Z2PS",
         )
         self.zone_3 = ZonePlayer(
             self,
@@ -69,7 +87,14 @@ class MarantzReceiver:
             input_source_command="Z3",
             volume_command="Z3",
             mute_command="Z3MU",
+            sleep_command="Z3SLP",
+            auto_standby_command="Z3STBY",
+            channel_mode_command="Z3CS",
+            channel_volume_command="Z3CV",
+            hpf_command="Z3HPF",
+            param_command="Z3PS",
         )
+        self.zone_4 = Zone4Player(self, self._state.zone_4)
         self._subscribers: list[StateCallback] = []
         self._pending_queries: list[PendingQuery] = []
         self._write_lock = asyncio.Lock()
@@ -341,7 +366,11 @@ class MarantzReceiver:
                 _LOGGER.warning("Unknown input source: %s", param)
 
         elif prefix == "MS":
-            changed = self._set_state_value("surround_mode", param)
+            if param.startswith("SMART") or param.startswith("FAVORITE"):
+                # Smart Select / Favorite acknowledgements aren't tracked in state.
+                pass
+            else:
+                changed = self._set_state_value("surround_mode", param)
 
         elif prefix == "CV":
             channel, sep, val = param.partition(" ")
@@ -389,6 +418,27 @@ class MarantzReceiver:
                 except ValueError:
                     _LOGGER.warning("Unknown video source: %s", param)
 
+        elif prefix == "VS":
+            prefix, param, changed = self._process_vs_message(message)
+
+        elif prefix == "PV":
+            # Picture mode/video adjustments — not tracked in state, swallow.
+            pass
+
+        elif prefix == "MN":
+            # Cursor / menu command echoes — not tracked in state.
+            pass
+
+        elif prefix == "TR":
+            prefix, param, changed = self._process_tr_message(message)
+
+        elif prefix == "SY":
+            prefix, param, changed = self._process_sy_message(message)
+
+        elif prefix == "SS":
+            # System settings echoes — not tracked in state for now.
+            pass
+
         elif message.startswith("SLP"):
             prefix = "SLP"
             param = message[3:]
@@ -424,19 +474,19 @@ class MarantzReceiver:
                     _LOGGER.warning("Unknown dimmer mode: %s", param)
 
         elif message.startswith("TFAN"):
-            prefix = "TF"
+            prefix = "TFAN"
             param = message[4:]
             if param not in ("UP", "DOWN", "?"):
                 changed = self._set_state_value("tuner_frequency", param)
 
         elif message.startswith("TPAN"):
-            prefix = "TP"
+            prefix = "TPAN"
             param = message[4:]
             if param not in ("UP", "DOWN", "?") and not param.startswith("MEM"):
                 changed = self._set_state_value("tuner_preset", param)
 
         elif message.startswith("TMAN"):
-            prefix = "TM"
+            prefix = "TMAN"
             param = message[4:]
             try:
                 changed = self._set_state_value("tuner_band", TunerBand(param))
@@ -447,25 +497,18 @@ class MarantzReceiver:
                     if param != "?":
                         _LOGGER.warning("Unknown tuner setting: %s", param)
 
-        elif prefix == "Z2":
-            if param.startswith("MU"):
-                mute_param = param[2:]
-                if mute_param == "ON":
-                    changed = self._set_attr_value(self._state.zone_2, "mute", True)
-                elif mute_param == "OFF":
-                    changed = self._set_attr_value(self._state.zone_2, "mute", False)
-            else:
-                changed = self._process_zone_param(self._state.zone_2, param)
+        elif message.startswith("Z2"):
+            prefix, param, changed = self._process_zone_message(
+                self._state.zone_2, "Z2", message
+            )
 
-        elif prefix == "Z3":
-            if param.startswith("MU"):
-                mute_param = param[2:]
-                if mute_param == "ON":
-                    changed = self._set_attr_value(self._state.zone_3, "mute", True)
-                elif mute_param == "OFF":
-                    changed = self._set_attr_value(self._state.zone_3, "mute", False)
-            else:
-                changed = self._process_zone_param(self._state.zone_3, param)
+        elif message.startswith("Z3"):
+            prefix, param, changed = self._process_zone_message(
+                self._state.zone_3, "Z3", message
+            )
+
+        elif message.startswith("Z4"):
+            prefix, param, changed = self._process_zone4_message(message)
 
         for pending in list(self._pending_queries):
             if pending.prefix == prefix and not pending.future.done():
@@ -544,7 +587,292 @@ class MarantzReceiver:
                 _LOGGER.warning("Unknown DRC mode: %s", val)
                 return False
 
+        if param.startswith("SWR "):
+            val = param[4:]
+            if val == "ON":
+                return self._set_state_value("subwoofer", True)
+            if val == "OFF":
+                return self._set_state_value("subwoofer", False)
+            return False
+
+        if param.startswith("LOM "):
+            val = param[4:]
+            if val == "ON":
+                return self._set_state_value("loudness", True)
+            if val == "OFF":
+                return self._set_state_value("loudness", False)
+            return False
+
+        if param.startswith("DEH "):
+            val = param[4:]
+            if val == "?":
+                return False
+            try:
+                return self._set_state_value("dialog_enhancer", DialogEnhancer(val))
+            except ValueError:
+                _LOGGER.warning("Unknown dialog enhancer mode: %s", val)
+                return False
+
+        if param.startswith("HTEQ "):
+            val = param[5:]
+            if val == "ON":
+                return self._set_state_value("ht_eq", True)
+            if val == "OFF":
+                return self._set_state_value("ht_eq", False)
+            return False
+
+        if param.startswith("LFC "):
+            val = param[4:]
+            if val == "ON":
+                return self._set_state_value("audyssey_lfc", True)
+            if val == "OFF":
+                return self._set_state_value("audyssey_lfc", False)
+            return False
+
+        if param.startswith("MDAX "):
+            val = param[5:]
+            if val == "?":
+                return False
+            try:
+                return self._set_state_value("mdax", MDAX(val))
+            except ValueError:
+                _LOGGER.warning("Unknown M-DAX mode: %s", val)
+                return False
+
+        if param.startswith("DELAY "):
+            val = param[6:]
+            if val in ("UP", "DOWN", "?"):
+                return False
+            try:
+                return self._set_state_value("audio_delay", int(val))
+            except ValueError:
+                return False
+
+        if param.startswith("NEURAL "):
+            val = param[7:]
+            if val == "ON":
+                return self._set_state_value("neural_x", True)
+            if val == "OFF":
+                return self._set_state_value("neural_x", False)
+            return False
+
+        if param.startswith("DCO "):
+            val = param[4:]
+            if val == "?":
+                return False
+            try:
+                return self._set_state_value("d_comp", DComp(val))
+            except ValueError:
+                _LOGGER.warning("Unknown D.COMP mode: %s", val)
+                return False
+
+        if param.startswith("BSC "):
+            val = param[4:]
+            if val in ("UP", "DOWN", "?"):
+                return False
+            try:
+                return self._set_state_value("bass_sync", int(val))
+            except ValueError:
+                return False
+
+        if param.startswith("LFE "):
+            val = param[4:]
+            if val in ("UP", "DOWN", "?"):
+                return False
+            try:
+                return self._set_state_value("lfe", -abs(int(val)))
+            except ValueError:
+                return False
+
+        if param.startswith("REFLEV "):
+            val = param[7:]
+            if val == "?":
+                return False
+            try:
+                return self._set_state_value("reference_level", int(val))
+            except ValueError:
+                return False
+
+        if param.startswith("GEQ "):
+            val = param[4:]
+            if val == "ON":
+                return self._set_state_value("graphic_eq", True)
+            if val == "OFF":
+                return self._set_state_value("graphic_eq", False)
+            return False
+
+        if param.startswith("HEQ "):
+            val = param[4:]
+            if val == "ON":
+                return self._set_state_value("headphone_eq", True)
+            if val == "OFF":
+                return self._set_state_value("headphone_eq", False)
+            return False
+
         _LOGGER.debug("Unknown PS parameter: %s", param)
+        return False
+
+    def _process_vs_message(self, message: str) -> tuple[str, str, bool]:
+        """Parse VS* responses (HDMI/video)."""
+        param = message[2:]
+        changed = False
+
+        if param.startswith("MONI"):
+            try:
+                changed = self._set_state_value("hdmi_monitor", HDMIMonitor(param))
+            except ValueError:
+                if param != "MONI ?":
+                    _LOGGER.debug("Unknown HDMI monitor: %s", param)
+        elif param.startswith("AUDIO"):
+            if param == "AUDIO ?":
+                pass
+            else:
+                try:
+                    changed = self._set_state_value(
+                        "hdmi_audio_output", HDMIAudioOutput(param)
+                    )
+                except ValueError:
+                    _LOGGER.debug("Unknown HDMI audio output: %s", param)
+        elif param.startswith("SC"):
+            try:
+                changed = self._set_state_value("hdmi_resolution", HDMIResolution(param))
+            except ValueError:
+                if not param.endswith("?"):
+                    _LOGGER.debug("Unknown HDMI resolution: %s", param)
+        elif param.startswith("VPM"):
+            try:
+                changed = self._set_state_value(
+                    "video_process_mode", VideoProcessMode(param)
+                )
+            except ValueError:
+                if param != "VPM ?":
+                    _LOGGER.debug("Unknown video process mode: %s", param)
+        else:
+            _LOGGER.debug("Unhandled VS message: %s", message)
+
+        return "VS", param, changed
+
+    def _process_tr_message(self, message: str) -> tuple[str, str, bool]:
+        """Parse TR1/TR2 trigger responses."""
+        param = message[2:]
+        changed = False
+
+        if param == "1 ON":
+            changed = self._set_state_value("trigger_1", True)
+        elif param == "1 OFF":
+            changed = self._set_state_value("trigger_1", False)
+        elif param == "2 ON":
+            changed = self._set_state_value("trigger_2", True)
+        elif param == "2 OFF":
+            changed = self._set_state_value("trigger_2", False)
+
+        return "TR", param, changed
+
+    def _process_sy_message(self, message: str) -> tuple[str, str, bool]:
+        """Parse SY* lock responses."""
+        param = message[2:]
+        changed = False
+
+        if param == "REMOTE LOCK ON":
+            changed = self._set_state_value("remote_lock", True)
+        elif param == "REMOTE LOCK OFF":
+            changed = self._set_state_value("remote_lock", False)
+        elif param in ("PANEL LOCK ON", "PANEL+V LOCK ON"):
+            changed = self._set_state_value("panel_lock", True)
+        elif param == "PANEL LOCK OFF":
+            changed = self._set_state_value("panel_lock", False)
+
+        return "SY", param, changed
+
+    def _process_zone_message(
+        self, zone: ZoneState, zone_prefix: str, message: str
+    ) -> tuple[str, str, bool]:
+        """Parse Z2*/Z3* responses, returning (matched_prefix, param, changed)."""
+        rest = message[2:]
+
+        # Sub-prefix matches first (longest-first).
+        for sub in _ZONE_SUB_PREFIXES:
+            if rest.startswith(sub):
+                sub_param = rest[len(sub):]
+                full_prefix = f"{zone_prefix}{sub}"
+                changed = self._process_zone_sub(zone, sub, sub_param)
+                return full_prefix, sub_param, changed
+
+        # Otherwise: power, source, volume, smart/favorite, source-cancel.
+        changed = self._process_zone_param(zone, rest)
+        return zone_prefix, rest, changed
+
+    def _process_zone_sub(
+        self, zone: ZoneState, sub: str, param: str
+    ) -> bool:
+        """Handle Z*<sub><param> messages."""
+        if sub == "MU":
+            if param == "ON":
+                return self._set_attr_value(zone, "mute", True)
+            if param == "OFF":
+                return self._set_attr_value(zone, "mute", False)
+            return False
+
+        if sub == "STBY":
+            if param == "OFF":
+                return self._set_attr_value(zone, "auto_standby", None)
+            if param != "?":
+                return self._set_attr_value(zone, "auto_standby", param)
+            return False
+
+        if sub == "SLP":
+            if param == "OFF":
+                return self._set_attr_value(zone, "sleep", None)
+            if param != "?":
+                return self._set_attr_value(zone, "sleep", param)
+            return False
+
+        if sub == "CS":
+            try:
+                return self._set_attr_value(zone, "channel_mode", ZoneChannelMode(param))
+            except ValueError:
+                if param != "?":
+                    _LOGGER.warning("Unknown zone channel mode: %s", param)
+                return False
+
+        if sub == "HPF":
+            if param == "ON":
+                return self._set_attr_value(zone, "hpf", True)
+            if param == "OFF":
+                return self._set_attr_value(zone, "hpf", False)
+            return False
+
+        if sub == "CV":
+            channel, sep, val = param.partition(" ")
+            if sep and val not in ("UP", "DOWN"):
+                try:
+                    new_value = parse_channel_volume_param(val)
+                    if zone.channel_volumes.get(channel) != new_value:
+                        zone.channel_volumes[channel] = new_value
+                        return True
+                except (ValueError, IndexError):
+                    _LOGGER.warning("Could not parse zone channel volume: %s", param)
+            return False
+
+        if sub == "PS":
+            if param.startswith("BAS "):
+                val = param[4:]
+                if val in ("UP", "DOWN", "?"):
+                    return False
+                try:
+                    return self._set_attr_value(zone, "bass", int(val) - 50)
+                except ValueError:
+                    return False
+            if param.startswith("TRE "):
+                val = param[4:]
+                if val in ("UP", "DOWN", "?"):
+                    return False
+                try:
+                    return self._set_attr_value(zone, "treble", int(val) - 50)
+                except ValueError:
+                    return False
+            return False
+
         return False
 
     def _process_zone_param(self, zone: ZoneState, param: str) -> bool:
@@ -559,8 +887,6 @@ class MarantzReceiver:
                 return self._set_attr_value(zone, "volume", parse_volume_param(param))
             except (ValueError, IndexError):
                 return False
-        if param.startswith("SLP"):
-            return False
         if param.startswith("SMART"):
             return False
         if param.startswith("FAVORITE"):
@@ -572,6 +898,35 @@ class MarantzReceiver:
         except ValueError:
             _LOGGER.warning("Unknown zone source: %s", param)
             return False
+
+    def _process_zone4_message(self, message: str) -> tuple[str, str, bool]:
+        """Parse Z4* responses."""
+        rest = message[2:]
+        zone = self._state.zone_4
+
+        if rest.startswith("SLP"):
+            param = rest[3:]
+            changed = False
+            if param == "OFF":
+                changed = self._set_attr_value(zone, "sleep", None)
+            elif param != "?":
+                changed = self._set_attr_value(zone, "sleep", param)
+            return "Z4SLP", param, changed
+
+        if rest == "ON":
+            return "Z4", rest, self._set_attr_value(zone, "power", True)
+        if rest == "OFF":
+            return "Z4", rest, self._set_attr_value(zone, "power", False)
+        if rest == "SOURCE":
+            return "Z4", rest, self._set_attr_value(zone, "input_source", None)
+
+        # Try input source
+        try:
+            changed = self._set_attr_value(zone, "input_source", InputSource(rest))
+            return "Z4", rest, changed
+        except ValueError:
+            _LOGGER.debug("Unknown Z4 message: %s", message)
+            return "Z4", rest, False
 
     def _notify_subscribers(self) -> None:
         state = self._state.copy() if self._connected else None

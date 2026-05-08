@@ -5,23 +5,32 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, TypeAlias
 
 from .const import (
+    AspectMode,
     AudioDecodeMode,
+    DComp,
+    DialogEnhancer,
     DigitalInputMode,
     DimmerMode,
     DRC,
     DynamicVolume,
     EcoMode,
+    HDMIAudioOutput,
+    HDMIMonitor,
+    HDMIResolution,
     InputSource,
+    MDAX,
     MultEQ,
     TunerBand,
     TunerMode,
+    VideoProcessMode,
+    ZoneChannelMode,
 )
 from .protocol import (
     channel_volume_to_param,
     parse_volume_param,
     volume_to_param,
 )
-from .state import MainZoneState, ZoneState
+from .state import MainZoneState, Zone4State, ZoneState
 
 if TYPE_CHECKING:
     from .receiver import MarantzReceiver
@@ -229,6 +238,88 @@ class MainPlayer(_BasePlayer):
     async def set_drc(self, mode: DRC) -> None:
         await self._receiver._send_command("PS", f"DRC {mode.value}")
 
+    # -- Subwoofer / loudness / dialog enhancer --
+
+    async def subwoofer_on(self) -> None:
+        await self._receiver._send_command("PS", "SWR ON")
+
+    async def subwoofer_off(self) -> None:
+        await self._receiver._send_command("PS", "SWR OFF")
+
+    async def loudness_on(self) -> None:
+        await self._receiver._send_command("PS", "LOM ON")
+
+    async def loudness_off(self) -> None:
+        await self._receiver._send_command("PS", "LOM OFF")
+
+    async def set_dialog_enhancer(self, mode: DialogEnhancer) -> None:
+        await self._receiver._send_command("PS", f"DEH {mode.value}")
+
+    # -- HT-EQ / Audyssey LFC / M-DAX / Audio delay --
+
+    async def ht_eq_on(self) -> None:
+        await self._receiver._send_command("PS", "HTEQ ON")
+
+    async def ht_eq_off(self) -> None:
+        await self._receiver._send_command("PS", "HTEQ OFF")
+
+    async def audyssey_lfc_on(self) -> None:
+        await self._receiver._send_command("PS", "LFC ON")
+
+    async def audyssey_lfc_off(self) -> None:
+        await self._receiver._send_command("PS", "LFC OFF")
+
+    async def set_mdax(self, mode: MDAX) -> None:
+        await self._receiver._send_command("PS", f"MDAX {mode.value}")
+
+    async def set_audio_delay(self, ms: int) -> None:
+        await self._receiver._send_command("PS", f"DELAY {ms:03d}")
+
+    async def audio_delay_up(self) -> None:
+        await self._receiver._send_command("PS", "DELAY UP")
+
+    async def audio_delay_down(self) -> None:
+        await self._receiver._send_command("PS", "DELAY DOWN")
+
+    # -- Neural:X / D.COMP / Bass Sync --
+
+    async def neural_x_on(self) -> None:
+        await self._receiver._send_command("PS", "NEURAL ON")
+
+    async def neural_x_off(self) -> None:
+        await self._receiver._send_command("PS", "NEURAL OFF")
+
+    async def set_d_comp(self, mode: DComp) -> None:
+        await self._receiver._send_command("PS", f"DCO {mode.value}")
+
+    async def set_bass_sync(self, value: int) -> None:
+        await self._receiver._send_command("PS", f"BSC {value:02d}")
+
+    # -- LFE / Reference Level / Graphic / Headphone EQ --
+
+    async def set_lfe(self, db: int) -> None:
+        # LFE goes from 0 to -10. Param is 00..10 (absolute value).
+        if db > 0 or db < -10:
+            raise ValueError("LFE must be between -10 and 0 dB")
+        await self._receiver._send_command("PS", f"LFE {abs(db):02d}")
+
+    async def set_reference_level(self, db: int) -> None:
+        if db not in (0, 5, 10, 15):
+            raise ValueError("Reference level must be 0, 5, 10, or 15")
+        await self._receiver._send_command("PS", f"REFLEV {db}")
+
+    async def graphic_eq_on(self) -> None:
+        await self._receiver._send_command("PS", "GEQ ON")
+
+    async def graphic_eq_off(self) -> None:
+        await self._receiver._send_command("PS", "GEQ OFF")
+
+    async def headphone_eq_on(self) -> None:
+        await self._receiver._send_command("PS", "HEQ ON")
+
+    async def headphone_eq_off(self) -> None:
+        await self._receiver._send_command("PS", "HEQ OFF")
+
     # -- Sleep / ECO / Standby / Dimmer --
 
     async def set_sleep(self, minutes: int) -> None:
@@ -281,9 +372,105 @@ class MainPlayer(_BasePlayer):
     async def set_tuner_mode(self, mode: TunerMode) -> None:
         await self._receiver._send_command("TMAN", mode.value)
 
+    # -- Video / HDMI settings --
+
+    async def set_aspect(self, mode: AspectMode) -> None:
+        await self._receiver._send_command("VS", mode.value)
+
+    async def set_hdmi_monitor(self, mode: HDMIMonitor) -> None:
+        await self._receiver._send_command("VS", mode.value)
+
+    async def set_hdmi_audio_output(self, mode: HDMIAudioOutput) -> None:
+        await self._receiver._send_command("VS", mode.value)
+
+    async def set_hdmi_resolution(self, resolution: HDMIResolution) -> None:
+        await self._receiver._send_command("VS", resolution.value)
+
+    async def set_video_process_mode(self, mode: VideoProcessMode) -> None:
+        await self._receiver._send_command("VS", mode.value)
+
+    async def vertical_stretch_on(self) -> None:
+        await self._receiver._send_command("VS", "VST ON")
+
+    async def vertical_stretch_off(self) -> None:
+        await self._receiver._send_command("VS", "VST OFF")
+
+    # -- Triggers / lock --
+
+    async def trigger_1_on(self) -> None:
+        await self._receiver._send_command("TR", "1 ON")
+
+    async def trigger_1_off(self) -> None:
+        await self._receiver._send_command("TR", "1 OFF")
+
+    async def trigger_2_on(self) -> None:
+        await self._receiver._send_command("TR", "2 ON")
+
+    async def trigger_2_off(self) -> None:
+        await self._receiver._send_command("TR", "2 OFF")
+
+    async def remote_lock_on(self) -> None:
+        await self._receiver._send_command("SY", "REMOTE LOCK ON")
+
+    async def remote_lock_off(self) -> None:
+        await self._receiver._send_command("SY", "REMOTE LOCK OFF")
+
+    async def panel_lock_on(self) -> None:
+        await self._receiver._send_command("SY", "PANEL LOCK ON")
+
+    async def panel_lock_with_volume_on(self) -> None:
+        await self._receiver._send_command("SY", "PANEL+V LOCK ON")
+
+    async def panel_lock_off(self) -> None:
+        await self._receiver._send_command("SY", "PANEL LOCK OFF")
+
+    # -- System control: cursor / menu --
+
+    async def cursor_up(self) -> None:
+        await self._receiver._send_command("MN", "CUP")
+
+    async def cursor_down(self) -> None:
+        await self._receiver._send_command("MN", "CDN")
+
+    async def cursor_left(self) -> None:
+        await self._receiver._send_command("MN", "CLT")
+
+    async def cursor_right(self) -> None:
+        await self._receiver._send_command("MN", "CRT")
+
+    async def enter(self) -> None:
+        await self._receiver._send_command("MN", "ENT")
+
+    async def back(self) -> None:
+        await self._receiver._send_command("MN", "RTN")
+
+    async def menu_on(self) -> None:
+        await self._receiver._send_command("MN", "MEN ON")
+
+    async def menu_off(self) -> None:
+        await self._receiver._send_command("MN", "MEN OFF")
+
+    async def option(self) -> None:
+        await self._receiver._send_command("MN", "OPT")
+
+    async def info(self) -> None:
+        await self._receiver._send_command("MN", "INF")
+
+    # -- Smart Select --
+
+    async def smart_select(self, slot: int) -> None:
+        if not 1 <= slot <= 5:
+            raise ValueError("Smart Select slot must be 1-5")
+        await self._receiver._send_command("MS", f"SMART{slot}")
+
+    async def smart_select_memory(self, slot: int) -> None:
+        if not 1 <= slot <= 5:
+            raise ValueError("Smart Select slot must be 1-5")
+        await self._receiver._send_command("MS", f"SMART{slot} MEMORY")
+
 
 class ZonePlayer(_BasePlayer):
-    """Stateful control surface for a Marantz zone."""
+    """Stateful control surface for a Marantz zone (Zone 2 / Zone 3)."""
 
     def __init__(
         self,
@@ -295,6 +482,12 @@ class ZonePlayer(_BasePlayer):
         input_source_command: str,
         volume_command: str,
         mute_command: str,
+        sleep_command: str,
+        auto_standby_command: str,
+        channel_mode_command: str,
+        channel_volume_command: str,
+        hpf_command: str,
+        param_command: str,
     ) -> None:
         super().__init__(
             receiver,
@@ -305,10 +498,40 @@ class ZonePlayer(_BasePlayer):
             volume_command=volume_command,
         )
         self._mute_command = mute_command
+        self._sleep_command = sleep_command
+        self._auto_standby_command = auto_standby_command
+        self._channel_mode_command = channel_mode_command
+        self._channel_volume_command = channel_volume_command
+        self._hpf_command = hpf_command
+        self._param_command = param_command
 
     @property
     def mute(self) -> bool | None:
         return self._state.mute
+
+    @property
+    def sleep(self) -> str | None:
+        return self._state.sleep
+
+    @property
+    def auto_standby(self) -> str | None:
+        return self._state.auto_standby
+
+    @property
+    def channel_mode(self) -> ZoneChannelMode | None:
+        return self._state.channel_mode
+
+    @property
+    def hpf(self) -> bool | None:
+        return self._state.hpf
+
+    @property
+    def bass(self) -> float | None:
+        return self._state.bass
+
+    @property
+    def treble(self) -> float | None:
+        return self._state.treble
 
     async def mute_on(self) -> None:
         await self._receiver._send_command(self._mute_command, "ON")
@@ -320,5 +543,108 @@ class ZonePlayer(_BasePlayer):
         resp = await self._receiver._query(self._mute_command)
         return resp == "ON"
 
+    # -- Sleep / Auto Standby --
 
-MarantzPlayer: TypeAlias = MainPlayer | ZonePlayer
+    async def set_sleep(self, minutes: int) -> None:
+        await self._receiver._send_command(self._sleep_command, f"{minutes:03d}")
+
+    async def sleep_off(self) -> None:
+        await self._receiver._send_command(self._sleep_command, "OFF")
+
+    async def set_auto_standby(self, value: str) -> None:
+        await self._receiver._send_command(self._auto_standby_command, value)
+
+    async def auto_standby_off(self) -> None:
+        await self._receiver._send_command(self._auto_standby_command, "OFF")
+
+    # -- Stereo / mono --
+
+    async def set_channel_mode(self, mode: ZoneChannelMode) -> None:
+        await self._receiver._send_command(self._channel_mode_command, mode.value)
+
+    # -- Channel volume (FL / FR only on zones) --
+
+    async def channel_volume_up(self, channel: str) -> None:
+        await self._receiver._send_command(
+            self._channel_volume_command, f"{channel} UP"
+        )
+
+    async def channel_volume_down(self, channel: str) -> None:
+        await self._receiver._send_command(
+            self._channel_volume_command, f"{channel} DOWN"
+        )
+
+    async def set_channel_volume(self, channel: str, db: float) -> None:
+        await self._receiver._send_command(
+            self._channel_volume_command,
+            f"{channel} {channel_volume_to_param(db)}",
+        )
+
+    # -- High Pass Filter --
+
+    async def hpf_on(self) -> None:
+        await self._receiver._send_command(self._hpf_command, "ON")
+
+    async def hpf_off(self) -> None:
+        await self._receiver._send_command(self._hpf_command, "OFF")
+
+    # -- Bass / Treble --
+
+    async def set_bass(self, db: int) -> None:
+        await self._receiver._send_command(self._param_command, f"BAS {db + 50}")
+
+    async def bass_up(self) -> None:
+        await self._receiver._send_command(self._param_command, "BAS UP")
+
+    async def bass_down(self) -> None:
+        await self._receiver._send_command(self._param_command, "BAS DOWN")
+
+    async def set_treble(self, db: int) -> None:
+        await self._receiver._send_command(self._param_command, f"TRE {db + 50}")
+
+    async def treble_up(self) -> None:
+        await self._receiver._send_command(self._param_command, "TRE UP")
+
+    async def treble_down(self) -> None:
+        await self._receiver._send_command(self._param_command, "TRE DOWN")
+
+
+class Zone4Player:
+    """Control surface for Zone 4 (HDMI passthrough only - no volume/mute)."""
+
+    def __init__(self, receiver: MarantzReceiver, state: Zone4State) -> None:
+        self._receiver = receiver
+        self._state = state
+
+    @property
+    def power(self) -> bool | None:
+        return self._state.power
+
+    @property
+    def input_source(self) -> InputSource | None:
+        return self._state.input_source
+
+    @property
+    def sleep(self) -> str | None:
+        return self._state.sleep
+
+    async def power_on(self) -> None:
+        await self._receiver._send_command("Z4", "ON")
+
+    async def power_standby(self) -> None:
+        await self._receiver._send_command("Z4", "OFF")
+
+    async def select_input_source(self, source: InputSource) -> None:
+        await self._receiver._send_command("Z4", source.value)
+
+    async def cancel_input_source(self) -> None:
+        await self._receiver._send_command("Z4", "SOURCE")
+
+    async def set_sleep(self, minutes: int) -> None:
+        await self._receiver._send_command("Z4SLP", f"{minutes:03d}")
+
+    async def sleep_off(self) -> None:
+        await self._receiver._send_command("Z4SLP", "OFF")
+
+
+MarantzPlayer: TypeAlias = MainPlayer | ZonePlayer | Zone4Player
