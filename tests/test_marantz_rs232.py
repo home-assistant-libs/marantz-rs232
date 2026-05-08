@@ -1872,3 +1872,263 @@ def test_receiver_state_zone4():
     copy = state.copy()
     copy.zone_4.power = False
     assert state.zone_4.power is True
+
+
+# ============================================================
+# Phase 2: PS sub-parameters with state
+# ============================================================
+
+
+# -- Subwoofer / Loudness / Dialog Enhancer --
+
+
+async def test_subwoofer_on(receiver, mock_serial):
+    await receiver.main.subwoofer_on()
+    assert b"PSSWR ON\r" in mock_serial.written_data
+
+
+async def test_subwoofer_off(receiver, mock_serial):
+    await receiver.main.subwoofer_off()
+    assert b"PSSWR OFF\r" in mock_serial.written_data
+
+
+async def test_loudness_on(receiver, mock_serial):
+    await receiver.main.loudness_on()
+    assert b"PSLOM ON\r" in mock_serial.written_data
+
+
+async def test_set_dialog_enhancer(receiver, mock_serial):
+    await receiver.main.set_dialog_enhancer(DialogEnhancer.MED)
+    assert b"PSDEH MED\r" in mock_serial.written_data
+
+
+# -- HT-EQ / LFC / MDAX / Audio Delay --
+
+
+async def test_ht_eq_on(receiver, mock_serial):
+    await receiver.main.ht_eq_on()
+    assert b"PSHTEQ ON\r" in mock_serial.written_data
+
+
+async def test_audyssey_lfc_on(receiver, mock_serial):
+    await receiver.main.audyssey_lfc_on()
+    assert b"PSLFC ON\r" in mock_serial.written_data
+
+
+async def test_set_mdax(receiver, mock_serial):
+    await receiver.main.set_mdax(MDAX.LOW)
+    assert b"PSMDAX LOW\r" in mock_serial.written_data
+
+
+async def test_set_audio_delay(receiver, mock_serial):
+    await receiver.main.set_audio_delay(150)
+    assert b"PSDELAY 150\r" in mock_serial.written_data
+
+
+async def test_audio_delay_up(receiver, mock_serial):
+    await receiver.main.audio_delay_up()
+    assert b"PSDELAY UP\r" in mock_serial.written_data
+
+
+# -- Neural:X / D.COMP / Bass Sync --
+
+
+async def test_neural_x_on(receiver, mock_serial):
+    await receiver.main.neural_x_on()
+    assert b"PSNEURAL ON\r" in mock_serial.written_data
+
+
+async def test_set_d_comp(receiver, mock_serial):
+    await receiver.main.set_d_comp(DComp.LOW)
+    assert b"PSDCO LOW\r" in mock_serial.written_data
+
+
+async def test_set_bass_sync(receiver, mock_serial):
+    await receiver.main.set_bass_sync(8)
+    assert b"PSBSC 08\r" in mock_serial.written_data
+
+
+# -- LFE / Reference Level / Graphic / Headphone EQ --
+
+
+async def test_set_lfe(receiver, mock_serial):
+    await receiver.main.set_lfe(-5)
+    assert b"PSLFE 05\r" in mock_serial.written_data
+
+
+async def test_set_lfe_zero(receiver, mock_serial):
+    await receiver.main.set_lfe(0)
+    assert b"PSLFE 00\r" in mock_serial.written_data
+
+
+async def test_set_lfe_invalid_raises():
+    from marantz_rs232 import MarantzReceiver as MR
+    recv = MR("/dev/null")
+    with pytest.raises(ValueError):
+        await recv.main.set_lfe(5)
+
+
+async def test_set_reference_level(receiver, mock_serial):
+    await receiver.main.set_reference_level(10)
+    assert b"PSREFLEV 10\r" in mock_serial.written_data
+
+
+async def test_set_reference_level_invalid_raises():
+    from marantz_rs232 import MarantzReceiver as MR
+    recv = MR("/dev/null")
+    with pytest.raises(ValueError):
+        await recv.main.set_reference_level(7)
+
+
+async def test_graphic_eq_on(receiver, mock_serial):
+    await receiver.main.graphic_eq_on()
+    assert b"PSGEQ ON\r" in mock_serial.written_data
+
+
+async def test_headphone_eq_on(receiver, mock_serial):
+    await receiver.main.headphone_eq_on()
+    assert b"PSHEQ ON\r" in mock_serial.written_data
+
+
+# -- PS sub-parameter event tests --
+
+
+async def test_subwoofer_event(receiver, mock_serial):
+    receiver._state.main_zone.subwoofer = False
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSSWR ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.subwoofer is True
+
+
+async def test_loudness_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSLOM ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.loudness is True
+
+
+async def test_dialog_enhancer_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSDEH HIGH")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.dialog_enhancer == DialogEnhancer.HIGH
+
+
+async def test_ht_eq_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSHTEQ ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.ht_eq is True
+
+
+async def test_audyssey_lfc_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSLFC ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.audyssey_lfc is True
+
+
+async def test_mdax_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSMDAX HI")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.mdax == MDAX.HI
+
+
+async def test_audio_delay_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSDELAY 200")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.audio_delay == 200
+
+
+async def test_neural_x_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSNEURAL ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.neural_x is True
+
+
+async def test_d_comp_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSDCO MID")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.d_comp == DComp.MID
+
+
+async def test_bass_sync_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSBSC 08")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.bass_sync == 8
+
+
+async def test_lfe_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSLFE 05")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.lfe == -5
+
+
+async def test_reference_level_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSREFLEV 10")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.reference_level == 10
+
+
+async def test_graphic_eq_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSGEQ ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.graphic_eq is True
+
+
+async def test_headphone_eq_event(receiver, mock_serial):
+    states: list[ReceiverState] = []
+    receiver.subscribe(lambda s: states.append(s))
+
+    mock_serial.inject_response("PSHEQ ON")
+    await asyncio.sleep(0.1)
+
+    assert states[-1].main_zone.headphone_eq is True
