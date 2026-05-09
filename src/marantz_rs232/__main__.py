@@ -14,13 +14,14 @@ import asyncio
 import sys
 
 from . import (
-    LegacyModel,
-    MarantzLegacyReceiver,
-    MarantzReceiver,
-    ReceiverState,
+    V2007Model,
+    V2007ReceiverState,
+    MarantzV2007Receiver,
+    MarantzV2015Receiver,
+    V2015ReceiverState,
     probe,
 )
-from .legacy import LegacyReceiverState, SOURCE_NAMES, SURROUND_NAMES
+from .v2007 import V2007_SOURCE_NAMES, V2007_SURROUND_NAMES
 
 
 def _format_db(db: float | None) -> str:
@@ -42,7 +43,7 @@ def _format_enum(val: object | None) -> str:
     return str(val)
 
 
-def _print_state(state: ReceiverState) -> None:
+def _print_state(state: V2015ReceiverState) -> None:
     print()
     print("=== Receiver Status ===")
     print()
@@ -138,7 +139,7 @@ def _print_state(state: ReceiverState) -> None:
     print()
 
 
-def _print_legacy_state(state: LegacyReceiverState) -> None:
+def _print_legacy_state(state: V2007ReceiverState) -> None:
     print()
     print("=== Receiver Status (legacy / SR7002-era) ===")
     print()
@@ -162,8 +163,8 @@ def _print_legacy_state(state: LegacyReceiverState) -> None:
     if m.source_video or m.source_audio:
         v = m.source_video or "?"
         a = m.source_audio or "?"
-        v_name = SOURCE_NAMES.get(v, "")
-        a_name = SOURCE_NAMES.get(a, "")
+        v_name = V2007_SOURCE_NAMES.get(v, "")
+        a_name = V2007_SOURCE_NAMES.get(a, "")
         print(f"  Source (video):  {v}{f' ({v_name})' if v_name else ''}")
         print(f"  Source (audio):  {a}{f' ({a_name})' if a_name else ''}")
 
@@ -179,12 +180,12 @@ def _print_legacy_state(state: LegacyReceiverState) -> None:
         print(f"  IP converter:    {m.ip_converter.name}")
 
     if m.surround_mode:
-        sur_name = SURROUND_NAMES.get(m.surround_mode, "")
+        sur_name = V2007_SURROUND_NAMES.get(m.surround_mode, "")
         print(f"  Surround mode:   {m.surround_mode}{f' ({sur_name})' if sur_name else ''}")
     if m.thx_mode is not None:
-        from .legacy import THX_STATUS_NAMES
+        from .v2007 import V2007_THX_STATUS_NAMES
 
-        thx_name = THX_STATUS_NAMES.get(m.thx_mode, "")
+        thx_name = V2007_THX_STATUS_NAMES.get(m.thx_mode, "")
         print(f"  THX mode:        {m.thx_mode}{f' ({thx_name})' if thx_name else ''}")
     if m.eq_mode is not None:
         print(f"  EQ mode:         {m.eq_mode.name}")
@@ -211,7 +212,7 @@ def _print_legacy_state(state: LegacyReceiverState) -> None:
         print("  Tuner:")
         if m.tuner_frequency_raw:
             try:
-                from .legacy.protocol import decode_tuner_frequency
+                from .v2007.protocol import decode_tuner_frequency
 
                 band, value = decode_tuner_frequency(m.tuner_frequency_raw)
                 if band == "FM":
@@ -271,7 +272,7 @@ def _print_legacy_state(state: LegacyReceiverState) -> None:
             print(f"    Line vol:     {_format_db(a.line_volume)}")
         if a.source_audio is not None:
             print(
-                f"    Source audio: {a.source_audio} ({SOURCE_NAMES.get(a.source_audio, '?')})"
+                f"    Source audio: {a.source_audio} ({V2007_SOURCE_NAMES.get(a.source_audio, '?')})"
             )
         if a.mute is not None:
             print(f"    Mute:         {'ON' if a.mute else 'OFF'}")
@@ -280,7 +281,7 @@ def _print_legacy_state(state: LegacyReceiverState) -> None:
 
 
 async def _run_modern(port: str, probe_sources: bool) -> None:
-    receiver = MarantzReceiver(port)
+    receiver = MarantzV2015Receiver(port)
 
     print(f"Connecting to {port}...")
     try:
@@ -306,8 +307,8 @@ async def _run_modern(port: str, probe_sources: bool) -> None:
         await receiver.disconnect()
 
 
-async def _run_legacy(port: str, model: LegacyModel = LegacyModel.GENERIC) -> None:
-    receiver = MarantzLegacyReceiver(port, model=model)
+async def _run_legacy(port: str, model: V2007Model = V2007Model.GENERIC) -> None:
+    receiver = MarantzV2007Receiver(port, model=model)
 
     print(f"Connecting to {port} (legacy protocol, model={model.value})...")
     try:
@@ -329,7 +330,7 @@ async def _run(
     probe_sources: bool,
     legacy: bool,
     detect: bool,
-    legacy_model: LegacyModel,
+    legacy_model: V2007Model,
 ) -> None:
     if detect:
         print(f"Probing protocol on {port}...")
@@ -339,7 +340,7 @@ async def _run(
             print(f"Error: {err}", file=sys.stderr)
             sys.exit(1)
         print(f"Detected: {cls.__name__}")
-        if cls is MarantzLegacyReceiver:
+        if cls is MarantzV2007Receiver:
             await _run_legacy(port, legacy_model)
             return
         await _run_modern(port, probe_sources)
@@ -374,8 +375,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--model",
-        choices=[m.value for m in LegacyModel],
-        default=LegacyModel.GENERIC.value,
+        choices=[m.value for m in V2007Model],
+        default=V2007Model.GENERIC.value,
         help=(
             "Specific legacy model. Picks generic baseline by default; "
             "select SR8002 to silence warnings about Multi Room B / HD Radio "
@@ -393,7 +394,7 @@ def main() -> None:
             args.probe,
             args.legacy,
             args.detect,
-            LegacyModel(args.model),
+            V2007Model(args.model),
         )
     )
 

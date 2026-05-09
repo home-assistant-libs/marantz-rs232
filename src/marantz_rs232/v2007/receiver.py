@@ -9,29 +9,29 @@ from collections.abc import Callable
 import serialx
 
 from .const import (
-    LEGACY_BAUD_RATE,
-    LEGACY_COMMAND_TIMEOUT,
-    LEGACY_TERMINATOR,
-    LegacyDolbyHeadphone,
-    LegacyEQMode,
-    LegacyHDMIAudioMode,
-    LegacyHDMIChannel,
-    LegacyInputAD,
-    LegacyInputSignal,
-    LegacyInputState,
-    LegacyIPConverter,
-    LegacyMDAX,
-    LegacyModel,
-    LegacyNightMode,
-    LegacyPower,
-    LegacySamplingFrequency,
-    LegacySignalFormat,
-    LegacyStereoMode,
-    LegacyTriState,
-    LegacyTunerMode,
-    LegacyVolumeMode,
+    V2007_BAUD_RATE,
+    V2007_COMMAND_TIMEOUT,
+    V2007_TERMINATOR,
+    V2007DolbyHeadphone,
+    V2007EQMode,
+    V2007HDMIAudioMode,
+    V2007HDMIChannel,
+    V2007InputAD,
+    V2007InputSignal,
+    V2007InputState,
+    V2007IPConverter,
+    V2007MDAX,
+    V2007Model,
+    V2007NightMode,
+    V2007Power,
+    V2007SamplingFrequency,
+    V2007SignalFormat,
+    V2007StereoMode,
+    V2007TriState,
+    V2007TunerMode,
+    V2007VolumeMode,
 )
-from .players import LegacyMainPlayer, LegacyMultiRoomPlayer
+from .players import V2007MainPlayer, V2007MultiRoomPlayer
 from .protocol import (
     PendingQuery,
     decode_tuner_frequency,
@@ -44,15 +44,15 @@ from .protocol import (
     parse_volume,
 )
 from .state import (
-    LegacyMainState,
-    LegacyMultiRoomState,
-    LegacyReceiverState,
+    V2007MainState,
+    V2007MultiRoomState,
+    V2007ReceiverState,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-StateCallback = Callable[[LegacyReceiverState | None], None]
+V2007StateCallback = Callable[[V2007ReceiverState | None], None]
 
 
 _MAIN_QUERY_PREFIXES = (
@@ -126,9 +126,9 @@ _MULTI_ROOM_PREFIXES = frozenset(_MR_A_QUERY_PREFIXES + ("MMC",))
 
 
 def _tristate_to_bool(value: str) -> bool | None:
-    if value == LegacyTriState.ON.value:
+    if value == V2007TriState.ON.value:
         return True
-    if value == LegacyTriState.OFF.value:
+    if value == V2007TriState.OFF.value:
         return False
     return None
 
@@ -136,28 +136,28 @@ def _tristate_to_bool(value: str) -> bool | None:
 # ----------------------------------------------------------------------------
 
 
-class MarantzLegacyReceiver:
+class MarantzV2007Receiver:
     """Async controller for a Marantz receiver speaking the SR7002-era protocol."""
 
     def __init__(
-        self, port: str, *, model: LegacyModel = LegacyModel.GENERIC
+        self, port: str, *, model: V2007Model = V2007Model.GENERIC
     ) -> None:
         self._port = port
         self._model = model
         self._reader: asyncio.StreamReader | None = None
         self._writer: serialx.SerialStreamWriter | None = None
         self._read_task: asyncio.Task | None = None
-        self._state = LegacyReceiverState()
-        self.main = LegacyMainPlayer(self, self._state.main)
-        self.multi_room_a = LegacyMultiRoomPlayer(
+        self._state = V2007ReceiverState()
+        self.main = V2007MainPlayer(self, self._state.main)
+        self.multi_room_a = V2007MultiRoomPlayer(
             self, self._state.multi_room_a, separator=":"
         )
         # Multi Room B is SR8002-only — instantiating on other models still
         # works but the receiver will ignore commands.
-        self.multi_room_b = LegacyMultiRoomPlayer(
+        self.multi_room_b = V2007MultiRoomPlayer(
             self, self._state.multi_room_b, separator="="
         )
-        self._subscribers: list[StateCallback] = []
+        self._subscribers: list[V2007StateCallback] = []
         self._pending_queries: list[PendingQuery] = []
         self._write_lock = asyncio.Lock()
         self._connected = False
@@ -167,7 +167,7 @@ class MarantzLegacyReceiver:
 
     def _check_sr8002(self, feature: str) -> None:
         """Warn (once per feature) if the current model isn't SR8002."""
-        if self._model is LegacyModel.SR8002:
+        if self._model is V2007Model.SR8002:
             return
         if feature in self._warned_sr8002_features:
             return
@@ -180,11 +180,11 @@ class MarantzLegacyReceiver:
         )
 
     @property
-    def model(self) -> LegacyModel:
+    def model(self) -> V2007Model:
         return self._model
 
     @property
-    def state(self) -> LegacyReceiverState:
+    def state(self) -> V2007ReceiverState:
         return self._state.copy()
 
     @property
@@ -195,14 +195,14 @@ class MarantzLegacyReceiver:
     def power(self) -> bool | None:
         return self._state.main.power
 
-    def subscribe(self, callback: StateCallback) -> Callable[[], None]:
+    def subscribe(self, callback: V2007StateCallback) -> Callable[[], None]:
         self._subscribers.append(callback)
         return lambda: self._subscribers.remove(callback)
 
     async def connect(self) -> None:
         self._reader, self._writer = await serialx.open_serial_connection(
             self._port,
-            baudrate=LEGACY_BAUD_RATE,
+            baudrate=V2007_BAUD_RATE,
         )
         self._connected = True
         self._read_task = asyncio.create_task(self._read_loop())
@@ -322,7 +322,7 @@ class MarantzLegacyReceiver:
                 _LOGGER.exception("Error writing to serial port")
                 await self._teardown()
                 raise
-            return await asyncio.wait_for(future, timeout=LEGACY_COMMAND_TIMEOUT)
+            return await asyncio.wait_for(future, timeout=V2007_COMMAND_TIMEOUT)
         finally:
             if pending in self._pending_queries:
                 self._pending_queries.remove(pending)
@@ -371,8 +371,8 @@ class MarantzLegacyReceiver:
 
             buf += data
 
-            while LEGACY_TERMINATOR in buf:
-                line, buf = buf.split(LEGACY_TERMINATOR, 1)
+            while V2007_TERMINATOR in buf:
+                line, buf = buf.split(V2007_TERMINATOR, 1)
                 if not line:
                     continue
                 if line.startswith(b"\n"):
@@ -434,9 +434,9 @@ class MarantzLegacyReceiver:
         main = self._state.main
 
         if prefix == "PWR":
-            if value == LegacyPower.ON.value:
+            if value == V2007Power.ON.value:
                 return self._set_attr(main, "power", True)
-            if value == LegacyPower.OFF.value:
+            if value == V2007Power.OFF.value:
                 return self._set_attr(main, "power", False)
             return False
 
@@ -493,7 +493,7 @@ class MarantzLegacyReceiver:
         if prefix == "HDM":
             try:
                 return self._set_attr(
-                    main, "hdmi_channel", LegacyHDMIChannel(value)
+                    main, "hdmi_channel", V2007HDMIChannel(value)
                 )
             except ValueError:
                 return False
@@ -501,7 +501,7 @@ class MarantzLegacyReceiver:
         if prefix == "HAM":
             try:
                 return self._set_attr(
-                    main, "hdmi_audio_mode", LegacyHDMIAudioMode(value)
+                    main, "hdmi_audio_mode", V2007HDMIAudioMode(value)
                 )
             except ValueError:
                 return False
@@ -509,7 +509,7 @@ class MarantzLegacyReceiver:
         if prefix == "IPC":
             try:
                 return self._set_attr(
-                    main, "ip_converter", LegacyIPConverter(value)
+                    main, "ip_converter", V2007IPConverter(value)
                 )
             except ValueError:
                 return False
@@ -528,27 +528,27 @@ class MarantzLegacyReceiver:
 
         if prefix == "EQM":
             try:
-                return self._set_attr(main, "eq_mode", LegacyEQMode(value))
+                return self._set_attr(main, "eq_mode", V2007EQMode(value))
             except ValueError:
                 return False
 
         if prefix == "DHM":
             try:
                 return self._set_attr(
-                    main, "dolby_headphone_mode", LegacyDolbyHeadphone(value)
+                    main, "dolby_headphone_mode", V2007DolbyHeadphone(value)
                 )
             except ValueError:
                 return False
 
         if prefix == "NGT":
             try:
-                return self._set_attr(main, "night_mode", LegacyNightMode(value))
+                return self._set_attr(main, "night_mode", V2007NightMode(value))
             except ValueError:
                 return False
 
         if prefix == "MDA":
             try:
-                return self._set_attr(main, "mdax", LegacyMDAX(value))
+                return self._set_attr(main, "mdax", V2007MDAX(value))
             except ValueError:
                 return False
 
@@ -621,7 +621,7 @@ class MarantzLegacyReceiver:
 
         if prefix == "TMD":
             try:
-                return self._set_attr(main, "tuner_mode", LegacyTunerMode(value))
+                return self._set_attr(main, "tuner_mode", V2007TunerMode(value))
             except ValueError:
                 return False
 
@@ -667,19 +667,19 @@ class MarantzLegacyReceiver:
 
         if prefix == "INP":
             try:
-                return self._set_attr(main, "input_ad", LegacyInputAD(value))
+                return self._set_attr(main, "input_ad", V2007InputAD(value))
             except ValueError:
                 return False
 
         if prefix == "ISG":
             try:
-                return self._set_attr(main, "input_signal", LegacyInputSignal(value))
+                return self._set_attr(main, "input_signal", V2007InputSignal(value))
             except ValueError:
                 return False
 
         if prefix == "IST":
             try:
-                return self._set_attr(main, "input_state", LegacyInputState(value))
+                return self._set_attr(main, "input_state", V2007InputState(value))
             except ValueError:
                 return False
 
@@ -690,7 +690,7 @@ class MarantzLegacyReceiver:
         if prefix == "SIG":
             try:
                 return self._set_attr(
-                    main, "signal_format", LegacySignalFormat(value)
+                    main, "signal_format", V2007SignalFormat(value)
                 )
             except ValueError:
                 return False
@@ -698,7 +698,7 @@ class MarantzLegacyReceiver:
         if prefix == "SFQ":
             try:
                 return self._set_attr(
-                    main, "sampling_frequency", LegacySamplingFrequency(value)
+                    main, "sampling_frequency", V2007SamplingFrequency(value)
                 )
             except ValueError:
                 return False
@@ -720,7 +720,7 @@ class MarantzLegacyReceiver:
     # ----- Multi Room (A or B) ------------------------------------------------
 
     def _apply_multiroom(
-        self, mr: LegacyMultiRoomState, prefix: str, value: str
+        self, mr: V2007MultiRoomState, prefix: str, value: str
     ) -> bool:
         if prefix == "MPW":
             return self._set_attr(mr, "power", _tristate_to_bool(value))
@@ -749,7 +749,7 @@ class MarantzLegacyReceiver:
         if prefix == "MVS":
             try:
                 return self._set_attr(
-                    mr, "line_volume_mode", LegacyVolumeMode(value)
+                    mr, "line_volume_mode", V2007VolumeMode(value)
                 )
             except ValueError:
                 return False
@@ -757,7 +757,7 @@ class MarantzLegacyReceiver:
         if prefix == "MSS":
             try:
                 return self._set_attr(
-                    mr, "speaker_volume_mode", LegacyVolumeMode(value)
+                    mr, "speaker_volume_mode", V2007VolumeMode(value)
                 )
             except ValueError:
                 return False
@@ -781,7 +781,7 @@ class MarantzLegacyReceiver:
 
         if prefix == "MST":
             try:
-                return self._set_attr(mr, "stereo_mode", LegacyStereoMode(value))
+                return self._set_attr(mr, "stereo_mode", V2007StereoMode(value))
             except ValueError:
                 return False
 
@@ -796,7 +796,7 @@ class MarantzLegacyReceiver:
 
         if prefix == "MTM":
             try:
-                return self._set_attr(mr, "tuner_mode", LegacyTunerMode(value))
+                return self._set_attr(mr, "tuner_mode", V2007TunerMode(value))
             except ValueError:
                 return False
 

@@ -2,17 +2,17 @@
 
 from enum import Enum
 
-BAUD_RATE = 9600
-COMMAND_TIMEOUT = 2.0
-MULTI_RESPONSE_DELAY = 0.3
-PROBE_TIMEOUT = 0.8
-CR = b"\r"
+V2015_BAUD_RATE = 9600
+V2015_COMMAND_TIMEOUT = 2.0
+V2015_MULTI_RESPONSE_DELAY = 0.3
+V2015_PROBE_TIMEOUT = 0.8
+V2015_CR = b"\r"
 
-MIN_VOLUME_DB = -80.0
-MAX_VOLUME_DB = 18.0
-VOLUME_DB_RANGE = MAX_VOLUME_DB - MIN_VOLUME_DB
+V2015_MIN_VOLUME_DB = -80.0
+V2015_MAX_VOLUME_DB = 18.0
+V2015_VOLUME_DB_RANGE = V2015_MAX_VOLUME_DB - V2015_MIN_VOLUME_DB
 
-_SINGLE_RESPONSE_PREFIXES = (
+_V2015_SINGLE_RESPONSE_PREFIXES = (
     "PW",
     "ZM",
     "MV",
@@ -36,7 +36,7 @@ _SINGLE_RESPONSE_PREFIXES = (
     "Z4SLP",
 )
 
-_MULTI_RESPONSE_PREFIXES = (
+_V2015_MULTI_RESPONSE_PREFIXES = (
     "CV",
     "PS",
     "Z2",
@@ -51,7 +51,7 @@ _MULTI_RESPONSE_PREFIXES = (
 )
 
 
-class InputSource(Enum):
+class V2015InputSource(Enum):
     PHONO = "PHONO"
     CD = "CD"
     TUNER = "TUNER"
@@ -91,7 +91,7 @@ class InputSource(Enum):
     USB_IPOD = "USB/IPOD"
 
 
-class DigitalInputMode(Enum):
+class V2015DigitalInputMode(Enum):
     AUTO = "AUTO"
     HDMI = "HDMI"
     DIGITAL = "DIGITAL"
@@ -100,13 +100,13 @@ class DigitalInputMode(Enum):
     SEVEN_1_IN = "7.1IN"
 
 
-class AudioDecodeMode(Enum):
+class V2015AudioDecodeMode(Enum):
     AUTO = "AUTO"
     PCM = "PCM"
     DTS = "DTS"
 
 
-class SurroundMode(Enum):
+class V2015SurroundMode(Enum):
     MOVIE = "MOVIE"
     MUSIC = "MUSIC"
     GAME = "GAME"
@@ -126,20 +126,20 @@ class SurroundMode(Enum):
     AURO2DSURR = "AURO2DSURR"
 
 
-class EcoMode(Enum):
+class V2015EcoMode(Enum):
     ON = "ON"
     AUTO = "AUTO"
     OFF = "OFF"
 
 
-class DimmerMode(Enum):
+class V2015DimmerMode(Enum):
     BRI = "BRI"
     DIM = "DIM"
     DAR = "DAR"
     OFF = "OFF"
 
 
-class MultEQ(Enum):
+class V2015MultEQ(Enum):
     AUDYSSEY = "AUDYSSEY"
     BYP_LR = "BYP.LR"
     FLAT = "FLAT"
@@ -147,7 +147,7 @@ class MultEQ(Enum):
     OFF = "OFF"
 
 
-class DynamicVolume(Enum):
+class V2015DynamicVolume(Enum):
     NGT = "NGT"
     EVE = "EVE"
     DAY = "DAY"
@@ -157,7 +157,7 @@ class DynamicVolume(Enum):
     OFF = "OFF"
 
 
-class DRC(Enum):
+class V2015DRC(Enum):
     AUTO = "AUTO"
     LOW = "LOW"
     MID = "MID"
@@ -165,54 +165,54 @@ class DRC(Enum):
     OFF = "OFF"
 
 
-class TunerBand(Enum):
+class V2015TunerBand(Enum):
     AM = "AM"
     FM = "FM"
 
 
-class TunerMode(Enum):
+class V2015TunerMode(Enum):
     AUTO = "AUTO"
     MANUAL = "MANUAL"
 
 
-class ZoneChannelMode(Enum):
+class V2015ZoneChannelMode(Enum):
     STEREO = "ST"
     MONO = "MONO"
 
 
-class DialogEnhancer(Enum):
+class V2015DialogEnhancer(Enum):
     OFF = "OFF"
     LOW = "LOW"
     MED = "MED"
     HIGH = "HIGH"
 
 
-class DComp(Enum):
+class V2015DComp(Enum):
     OFF = "OFF"
     LOW = "LOW"
     MID = "MID"
     HIGH = "HIGH"
 
 
-class MDAX(Enum):
+class V2015MDAX(Enum):
     OFF = "OFF"
     LOW = "LOW"
     MID = "MID"
     HI = "HI"
 
 
-class HDMIMonitor(Enum):
+class V2015HDMIMonitor(Enum):
     AUTO = "MONIAUTO"
     MONITOR_1 = "MONI1"
     MONITOR_2 = "MONI2"
 
 
-class HDMIAudioOutput(Enum):
+class V2015HDMIAudioOutput(Enum):
     AMP = "AUDIO AMP"
     TV = "AUDIO TV"
 
 
-class HDMIResolution(Enum):
+class V2015HDMIResolution(Enum):
     AUTO = "SCAUTO"
     P480 = "SC48P"
     I1080 = "SC10I"
@@ -223,12 +223,12 @@ class HDMIResolution(Enum):
     K4_60 = "SC4KF"
 
 
-class VideoProcessMode(Enum):
+class V2015VideoProcessMode(Enum):
     AUTO = "VPMAUTO"
     GAME = "VPMGAME"
     MOVIE = "VPMMOVI"
 
 
-class AspectMode(Enum):
+class V2015AspectMode(Enum):
     NORMAL = "ASPNRM"
     FULL = "ASPFUL"

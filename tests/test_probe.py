@@ -2,7 +2,7 @@
 
 import pytest
 
-from marantz_rs232 import MarantzReceiver, InputSource
+from marantz_rs232 import MarantzV2015Receiver, V2015InputSource
 
 
 async def test_probe_sources(receiver, mock_serial):
@@ -18,12 +18,12 @@ async def test_probe_sources(receiver, mock_serial):
 
     result = await receiver.probe_sources()
 
-    expected = {InputSource(v) for v in valid_values}
+    expected = {V2015InputSource(v) for v in valid_values}
     assert result == expected
 
 
 async def test_probe_sources_restores_original(receiver, mock_serial):
-    assert receiver.state.main_zone.input_source == InputSource.CD
+    assert receiver.state.main_zone.input_source == V2015InputSource.CD
 
     valid_values = {"CD", "DVD"}
 
@@ -43,16 +43,16 @@ async def test_probe_sources_restores_original(receiver, mock_serial):
         if d.startswith(b"SI") and not d.endswith(b"?\r")
     ]
     assert si_commands[-1] == b"SICD\r"
-    assert receiver.state.main_zone.input_source == InputSource.CD
+    assert receiver.state.main_zone.input_source == V2015InputSource.CD
 
 
 async def test_probe_includes_current_source(receiver, mock_serial):
     result = await receiver.probe_sources()
 
-    assert InputSource.CD in result
+    assert V2015InputSource.CD in result
 
 
 async def test_probe_disconnected_raises():
-    recv = MarantzReceiver("/dev/ttyUSB0")
+    recv = MarantzV2015Receiver("/dev/ttyUSB0")
     with pytest.raises(ConnectionError, match="Not connected"):
         await recv.probe_sources()

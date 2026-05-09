@@ -2,21 +2,21 @@
 
 from enum import Enum
 
-LEGACY_BAUD_RATE = 9600
-LEGACY_COMMAND_TIMEOUT = 1.0  # spec mandates response within 500 ms; 1 s for safety
+V2007_BAUD_RATE = 9600
+V2007_COMMAND_TIMEOUT = 1.0  # spec mandates response within 500 ms; 1 s for safety
 
-LEGACY_PREFIX = "@"
-LEGACY_SEPARATOR = ":"
-LEGACY_TERMINATOR = b"\r"
-LEGACY_MULTI_ROOM_B_SEPARATOR = "="  # SR8002 Multi Room B substitutes `=` for `:`
-LEGACY_HD_RADIO_SEPARATOR = "*"  # SR8002 HD Radio metadata uses `*` separator
+V2007_PREFIX = "@"
+V2007_SEPARATOR = ":"
+V2007_TERMINATOR = b"\r"
+V2007_MULTI_ROOM_B_SEPARATOR = "="  # SR8002 Multi Room B substitutes `=` for `:`
+V2007_HD_RADIO_SEPARATOR = "*"  # SR8002 HD Radio metadata uses `*` separator
 
 # Single-byte ACK / NAK responses framed as `@\x06\r` / `@\x15\r`.
 ACK_BYTE = "\x06"
 NAK_BYTE = "\x15"
 
 
-class LegacyModel(Enum):
+class V2007Model(Enum):
     """Specific Marantz model in the legacy protocol family.
 
     GENERIC: assume the documented baseline shared by all listed models.
@@ -29,7 +29,7 @@ class LegacyModel(Enum):
     SR8002 = "SR8002"
 
 
-class LegacyTriState(Enum):
+class V2007TriState(Enum):
     """Standard tri-state value used for many on/off-with-toggle commands.
 
     Applies to AMT (audio mute), VMT (video mute), ATT (attenuator),
@@ -41,7 +41,7 @@ class LegacyTriState(Enum):
     ON = "2"
 
 
-class LegacyPower(Enum):
+class V2007Power(Enum):
     """PWR set values."""
 
     TOGGLE = "0"
@@ -50,11 +50,11 @@ class LegacyPower(Enum):
     GLOBAL_OFF = "3"
 
 
-class LegacySource(Enum):
+class V2007Source(Enum):
     """Documented source codes for SR7002/SR8002.
 
     The wire format is a single character. `@SRC:?` queries return TWO
-    characters (video then audio) — see `LegacyMainState.source_video` and
+    characters (video then audio) — see `V2007MainState.source_video` and
     `source_audio`. Setting via `@SRC:<code>` switches both video and audio
     to the same input.
     """
@@ -73,10 +73,10 @@ class LegacySource(Enum):
     XM1 = "J"
 
 
-SOURCE_NAMES: dict[str, str] = {member.value: member.name for member in LegacySource}
+V2007_SOURCE_NAMES: dict[str, str] = {member.value: member.name for member in V2007Source}
 
 
-class LegacySurroundCode(Enum):
+class V2007SurroundCode(Enum):
     """Surround mode status codes (single character returned by `@SUR:?`).
 
     These are the *status* values — the set form prepends `0` for codes
@@ -126,12 +126,12 @@ class LegacySurroundCode(Enum):
     DTS_HD_EXPRESS = "g"
 
 
-SURROUND_NAMES: dict[str, str] = {
-    member.value: member.name for member in LegacySurroundCode
+V2007_SURROUND_NAMES: dict[str, str] = {
+    member.value: member.name for member in V2007SurroundCode
 }
 
 
-class LegacyTHXSet(Enum):
+class V2007THXSet(Enum):
     """Values accepted by `@THX:<value>` set commands."""
 
     AUTO = "0"
@@ -145,7 +145,7 @@ class LegacyTHXSet(Enum):
     DTS_NEO6_THX = "9"
 
 
-THX_STATUS_NAMES: dict[str, str] = {
+V2007_THX_STATUS_NAMES: dict[str, str] = {
     "0": "AUTO",
     "3": "PL2X_MOVIE_THX",
     "4": "PL2_MOVIE_THX",
@@ -160,7 +160,7 @@ THX_STATUS_NAMES: dict[str, str] = {
 }
 
 
-class LegacyEQMode(Enum):
+class V2007EQMode(Enum):
     """`@EQM:` values."""
 
     OFF = "0"
@@ -170,7 +170,7 @@ class LegacyEQMode(Enum):
     AUDYSSEY_CURVE = "5"
 
 
-class LegacyDolbyHeadphone(Enum):
+class V2007DolbyHeadphone(Enum):
     """`@DHM:` values."""
 
     BYPASS = "0"
@@ -179,7 +179,7 @@ class LegacyDolbyHeadphone(Enum):
     PLII_MUSIC = "3"
 
 
-class LegacyNightMode(Enum):
+class V2007NightMode(Enum):
     """`@NGT:` values."""
 
     TOGGLE = "0"
@@ -188,7 +188,7 @@ class LegacyNightMode(Enum):
     AUTO = "3"
 
 
-class LegacyMDAX(Enum):
+class V2007MDAX(Enum):
     """`@MDA:` values."""
 
     OFF = "1"
@@ -196,7 +196,7 @@ class LegacyMDAX(Enum):
     HIGH = "3"
 
 
-class LegacyHDMIChannel(Enum):
+class V2007HDMIChannel(Enum):
     """`@HDM:` values — HDMI output channel."""
 
     TOGGLE = "0"
@@ -204,28 +204,28 @@ class LegacyHDMIChannel(Enum):
     CH2 = "2"
 
 
-class LegacyHDMIAudioMode(Enum):
+class V2007HDMIAudioMode(Enum):
     """`@HAM:` values — HDMI audio routing."""
 
     ENABLE = "1"  # AVR plays audio
     THROUGH = "2"  # passthrough to TV
 
 
-class LegacyIPConverter(Enum):
+class V2007IPConverter(Enum):
     """`@IPC:` values — interlace/progressive converter."""
 
     DISABLE = "1"
     ENABLE = "2"
 
 
-class LegacyComponent2(Enum):
+class V2007Component2(Enum):
     """`@CM2:` values (SR8002 only)."""
 
     MAIN = "1"
     MULTI = "2"
 
 
-class LegacyTunerMode(Enum):
+class V2007TunerMode(Enum):
     """`@TMD:` values.
 
     Note the set/status overlap on `0`: as a SET command, `0` toggles between
@@ -238,7 +238,7 @@ class LegacyTunerMode(Enum):
     DIGITAL_AUTO = "3"  # SR8002 HD Radio only
 
 
-class LegacyMenu(Enum):
+class V2007Menu(Enum):
     """`@MNU:` values."""
 
     TOGGLE = "0"
@@ -247,7 +247,7 @@ class LegacyMenu(Enum):
     ENTER = "3"
 
 
-class LegacyCursor(Enum):
+class V2007Cursor(Enum):
     """`@CUR:` directional values (ack-only, no status)."""
 
     UP = "1"
@@ -256,7 +256,7 @@ class LegacyCursor(Enum):
     RIGHT = "4"
 
 
-class LegacyInputAD(Enum):
+class V2007InputAD(Enum):
     """`@INP:` values — input analog/digital select status."""
 
     ANALOG = "1"
@@ -266,7 +266,7 @@ class LegacyInputAD(Enum):
     AUTO_HDMI = "8"
 
 
-class LegacyInputSignal(Enum):
+class V2007InputSignal(Enum):
     """`@ISG:` values — present input signal type."""
 
     ANALOG = "1"
@@ -274,7 +274,7 @@ class LegacyInputSignal(Enum):
     HDMI = "4"
 
 
-class LegacyInputState(Enum):
+class V2007InputState(Enum):
     """`@IST:` values — input lock state."""
 
     UNKNOWN = "0"
@@ -282,7 +282,7 @@ class LegacyInputState(Enum):
     ON = "2"
 
 
-class LegacySignalFormat(Enum):
+class V2007SignalFormat(Enum):
     """`@SIG:` values — digital signal format."""
 
     NO_DETECT = "0"
@@ -307,7 +307,7 @@ class LegacySignalFormat(Enum):
     DTS_HD_EXPRESS = "K"
 
 
-class LegacySamplingFrequency(Enum):
+class V2007SamplingFrequency(Enum):
     """`@SFQ:` values."""
 
     OUT_OF_RANGE = "0"
@@ -321,14 +321,14 @@ class LegacySamplingFrequency(Enum):
     ANALOG = "F"
 
 
-class LegacyVolumeMode(Enum):
+class V2007VolumeMode(Enum):
     """`@MVS:` and `@MSS:` — Multi Room volume mode."""
 
     VARIABLE = "1"
     FIXED = "2"
 
 
-class LegacyStereoMode(Enum):
+class V2007StereoMode(Enum):
     """`@MST:` — Multi Room A stereo/mono mode."""
 
     TOGGLE = "0"
@@ -341,7 +341,7 @@ class LegacyStereoMode(Enum):
 #   xxxxx <  256        → XM channel (xxxxx = channel)
 #   xxxxx <  2000       → AM kHz     (xxxxx = kHz, e.g. 01080 = 1080 kHz)
 #   xxxxx >= 2000       → FM 10 kHz units (e.g. 08750 = 87.50 MHz)
-class TunerBand(Enum):
+class V2007TunerBand(Enum):
     AM = "AM"
     FM = "FM"
     XM = "XM"

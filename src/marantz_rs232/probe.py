@@ -8,16 +8,16 @@ from typing import TYPE_CHECKING, Union
 
 import serialx
 
-from .const import BAUD_RATE
-from .legacy import MarantzLegacyReceiver
+from .v2007 import MarantzV2007Receiver
+from .v2015 import V2015_BAUD_RATE
 
 if TYPE_CHECKING:
-    from .receiver import MarantzReceiver
+    from .v2015 import MarantzV2015Receiver
 
 _LOGGER = logging.getLogger(__name__)
 
 
-ReceiverClass = Union[type["MarantzReceiver"], type[MarantzLegacyReceiver]]
+ReceiverClass = Union[type["MarantzV2015Receiver"], type[MarantzV2007Receiver]]
 
 
 PROBE_TIMEOUT = 1.5  # generous — legacy spec promises 500 ms; we want both protocols
@@ -32,9 +32,9 @@ async def probe(port: str, *, timeout: float = PROBE_TIMEOUT) -> ReceiverClass:
 
     Raises `ConnectionError` if neither protocol responds within `timeout`.
     """
-    from .receiver import MarantzReceiver  # local to avoid import cycle
+    from .v2015 import MarantzV2015Receiver  # local to avoid import cycle
 
-    reader, writer = await serialx.open_serial_connection(port, baudrate=BAUD_RATE)
+    reader, writer = await serialx.open_serial_connection(port, baudrate=V2015_BAUD_RATE)
     try:
         # Send legacy first; if it answers we're done. Otherwise the modern
         # query goes out next. Both protocols ignore commands they don't
@@ -52,9 +52,9 @@ async def probe(port: str, *, timeout: float = PROBE_TIMEOUT) -> ReceiverClass:
 
         if byte == b"@":
             _LOGGER.info("Detected legacy protocol on %s", port)
-            return MarantzLegacyReceiver
+            return MarantzV2007Receiver
         _LOGGER.info("Detected modern protocol on %s (first byte %r)", port, byte)
-        return MarantzReceiver
+        return MarantzV2015Receiver
     finally:
         writer.close()
         await writer.wait_closed()

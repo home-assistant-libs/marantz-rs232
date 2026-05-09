@@ -5,35 +5,35 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, TypeAlias
 
 from .const import (
-    AspectMode,
-    AudioDecodeMode,
-    DComp,
-    DialogEnhancer,
-    DigitalInputMode,
-    DimmerMode,
-    DRC,
-    DynamicVolume,
-    EcoMode,
-    HDMIAudioOutput,
-    HDMIMonitor,
-    HDMIResolution,
-    InputSource,
-    MDAX,
-    MultEQ,
-    TunerBand,
-    TunerMode,
-    VideoProcessMode,
-    ZoneChannelMode,
+    V2015AspectMode,
+    V2015AudioDecodeMode,
+    V2015DComp,
+    V2015DialogEnhancer,
+    V2015DigitalInputMode,
+    V2015DimmerMode,
+    V2015DRC,
+    V2015DynamicVolume,
+    V2015EcoMode,
+    V2015HDMIAudioOutput,
+    V2015HDMIMonitor,
+    V2015HDMIResolution,
+    V2015InputSource,
+    V2015MDAX,
+    V2015MultEQ,
+    V2015TunerBand,
+    V2015TunerMode,
+    V2015VideoProcessMode,
+    V2015ZoneChannelMode,
 )
 from .protocol import (
     channel_volume_to_param,
     parse_volume_param,
     volume_to_param,
 )
-from .state import MainZoneState, Zone4State, ZoneState
+from .state import V2015MainZoneState, V2015Zone4State, V2015ZoneState
 
 if TYPE_CHECKING:
-    from .receiver import MarantzReceiver
+    from .receiver import MarantzV2015Receiver
 
 
 class _BasePlayer:
@@ -41,8 +41,8 @@ class _BasePlayer:
 
     def __init__(
         self,
-        receiver: MarantzReceiver,
-        state: ZoneState,
+        receiver: MarantzV2015Receiver,
+        state: V2015ZoneState,
         *,
         power_command: str,
         power_standby_parameter: str,
@@ -61,7 +61,7 @@ class _BasePlayer:
         return self._state.power
 
     @property
-    def input_source(self) -> InputSource | None:
+    def input_source(self) -> V2015InputSource | None:
         return self._state.input_source
 
     @property
@@ -85,7 +85,7 @@ class _BasePlayer:
             self._power_standby_parameter,
         )
 
-    async def select_input_source(self, source: InputSource) -> None:
+    async def select_input_source(self, source: V2015InputSource) -> None:
         await self._receiver._send_command(
             self._input_source_command,
             source.value,
@@ -108,12 +108,12 @@ class _BasePlayer:
         return resp == "ON"
 
 
-class MainPlayer(_BasePlayer):
+class V2015MainPlayer(_BasePlayer):
     """Stateful control surface for the receiver's main output."""
 
-    _state: MainZoneState
+    _state: V2015MainZoneState
 
-    def __init__(self, receiver: MarantzReceiver, state: MainZoneState) -> None:
+    def __init__(self, receiver: MarantzV2015Receiver, state: V2015MainZoneState) -> None:
         super().__init__(
             receiver,
             state,
@@ -153,8 +153,8 @@ class MainPlayer(_BasePlayer):
         resp = await self._receiver._query("MU")
         return resp == "ON"
 
-    async def query_input_source(self) -> InputSource:
-        return InputSource(await self._receiver._query("SI"))
+    async def query_input_source(self) -> V2015InputSource:
+        return V2015InputSource(await self._receiver._query("SI"))
 
     async def set_surround_mode(self, mode: str) -> None:
         await self._receiver._send_command("MS", mode)
@@ -162,32 +162,32 @@ class MainPlayer(_BasePlayer):
     async def query_surround_mode(self) -> str:
         return await self._receiver._query("MS")
 
-    async def set_digital_input(self, mode: DigitalInputMode) -> None:
+    async def set_digital_input(self, mode: V2015DigitalInputMode) -> None:
         await self._receiver._send_command("SD", mode.value)
 
-    async def query_digital_input(self) -> DigitalInputMode | None:
+    async def query_digital_input(self) -> V2015DigitalInputMode | None:
         param = await self._receiver._query("SD")
         if param == "NO":
             return None
-        return DigitalInputMode(param)
+        return V2015DigitalInputMode(param)
 
-    async def set_audio_decode(self, mode: AudioDecodeMode) -> None:
+    async def set_audio_decode(self, mode: V2015AudioDecodeMode) -> None:
         await self._receiver._send_command("DC", mode.value)
 
-    async def query_audio_decode(self) -> AudioDecodeMode:
-        return AudioDecodeMode(await self._receiver._query("DC"))
+    async def query_audio_decode(self) -> V2015AudioDecodeMode:
+        return V2015AudioDecodeMode(await self._receiver._query("DC"))
 
-    async def set_video_select(self, source: InputSource) -> None:
+    async def set_video_select(self, source: V2015InputSource) -> None:
         await self._receiver._send_command("SV", source.value)
 
     async def cancel_video_select(self) -> None:
         await self._receiver._send_command("SV", "SOURCE")
 
-    async def query_video_select(self) -> InputSource | None:
+    async def query_video_select(self) -> V2015InputSource | None:
         param = await self._receiver._query("SV")
         if param in ("SOURCE", "OFF"):
             return None
-        return InputSource(param)
+        return V2015InputSource(param)
 
     # -- Tone control --
 
@@ -223,7 +223,7 @@ class MainPlayer(_BasePlayer):
     async def cinema_eq_off(self) -> None:
         await self._receiver._send_command("PS", "CINEMA EQ.OFF")
 
-    async def set_multeq(self, mode: MultEQ) -> None:
+    async def set_multeq(self, mode: V2015MultEQ) -> None:
         await self._receiver._send_command("PS", f"MULTEQ:{mode.value}")
 
     async def dynamic_eq_on(self) -> None:
@@ -232,10 +232,10 @@ class MainPlayer(_BasePlayer):
     async def dynamic_eq_off(self) -> None:
         await self._receiver._send_command("PS", "DYNEQ OFF")
 
-    async def set_dynamic_volume(self, mode: DynamicVolume) -> None:
+    async def set_dynamic_volume(self, mode: V2015DynamicVolume) -> None:
         await self._receiver._send_command("PS", f"DYNVOL {mode.value}")
 
-    async def set_drc(self, mode: DRC) -> None:
+    async def set_drc(self, mode: V2015DRC) -> None:
         await self._receiver._send_command("PS", f"DRC {mode.value}")
 
     # -- Subwoofer / loudness / dialog enhancer --
@@ -252,7 +252,7 @@ class MainPlayer(_BasePlayer):
     async def loudness_off(self) -> None:
         await self._receiver._send_command("PS", "LOM OFF")
 
-    async def set_dialog_enhancer(self, mode: DialogEnhancer) -> None:
+    async def set_dialog_enhancer(self, mode: V2015DialogEnhancer) -> None:
         await self._receiver._send_command("PS", f"DEH {mode.value}")
 
     # -- HT-EQ / Audyssey LFC / M-DAX / Audio delay --
@@ -269,7 +269,7 @@ class MainPlayer(_BasePlayer):
     async def audyssey_lfc_off(self) -> None:
         await self._receiver._send_command("PS", "LFC OFF")
 
-    async def set_mdax(self, mode: MDAX) -> None:
+    async def set_mdax(self, mode: V2015MDAX) -> None:
         await self._receiver._send_command("PS", f"MDAX {mode.value}")
 
     async def set_audio_delay(self, ms: int) -> None:
@@ -289,7 +289,7 @@ class MainPlayer(_BasePlayer):
     async def neural_x_off(self) -> None:
         await self._receiver._send_command("PS", "NEURAL OFF")
 
-    async def set_d_comp(self, mode: DComp) -> None:
+    async def set_d_comp(self, mode: V2015DComp) -> None:
         await self._receiver._send_command("PS", f"DCO {mode.value}")
 
     async def set_bass_sync(self, value: int) -> None:
@@ -328,7 +328,7 @@ class MainPlayer(_BasePlayer):
     async def sleep_off(self) -> None:
         await self._receiver._send_command("SLP", "OFF")
 
-    async def set_eco(self, mode: EcoMode) -> None:
+    async def set_eco(self, mode: V2015EcoMode) -> None:
         await self._receiver._send_command("ECO", mode.value)
 
     async def set_auto_standby(self, value: str) -> None:
@@ -337,7 +337,7 @@ class MainPlayer(_BasePlayer):
     async def auto_standby_off(self) -> None:
         await self._receiver._send_command("STBY", "OFF")
 
-    async def set_dimmer(self, mode: DimmerMode) -> None:
+    async def set_dimmer(self, mode: V2015DimmerMode) -> None:
         await self._receiver._send_command("DIM", f" {mode.value}")
 
     # -- Tuner (Marantz uses TFAN/TPAN/TMAN prefixes) --
@@ -366,27 +366,27 @@ class MainPlayer(_BasePlayer):
     async def query_tuner_preset(self) -> str:
         return await self._receiver._query("TPAN")
 
-    async def set_tuner_band(self, band: TunerBand) -> None:
+    async def set_tuner_band(self, band: V2015TunerBand) -> None:
         await self._receiver._send_command("TMAN", band.value)
 
-    async def set_tuner_mode(self, mode: TunerMode) -> None:
+    async def set_tuner_mode(self, mode: V2015TunerMode) -> None:
         await self._receiver._send_command("TMAN", mode.value)
 
     # -- Video / HDMI settings --
 
-    async def set_aspect(self, mode: AspectMode) -> None:
+    async def set_aspect(self, mode: V2015AspectMode) -> None:
         await self._receiver._send_command("VS", mode.value)
 
-    async def set_hdmi_monitor(self, mode: HDMIMonitor) -> None:
+    async def set_hdmi_monitor(self, mode: V2015HDMIMonitor) -> None:
         await self._receiver._send_command("VS", mode.value)
 
-    async def set_hdmi_audio_output(self, mode: HDMIAudioOutput) -> None:
+    async def set_hdmi_audio_output(self, mode: V2015HDMIAudioOutput) -> None:
         await self._receiver._send_command("VS", mode.value)
 
-    async def set_hdmi_resolution(self, resolution: HDMIResolution) -> None:
+    async def set_hdmi_resolution(self, resolution: V2015HDMIResolution) -> None:
         await self._receiver._send_command("VS", resolution.value)
 
-    async def set_video_process_mode(self, mode: VideoProcessMode) -> None:
+    async def set_video_process_mode(self, mode: V2015VideoProcessMode) -> None:
         await self._receiver._send_command("VS", mode.value)
 
     async def vertical_stretch_on(self) -> None:
@@ -469,13 +469,13 @@ class MainPlayer(_BasePlayer):
         await self._receiver._send_command("MS", f"SMART{slot} MEMORY")
 
 
-class ZonePlayer(_BasePlayer):
+class V2015ZonePlayer(_BasePlayer):
     """Stateful control surface for a Marantz zone (Zone 2 / Zone 3)."""
 
     def __init__(
         self,
-        receiver: MarantzReceiver,
-        state: ZoneState,
+        receiver: MarantzV2015Receiver,
+        state: V2015ZoneState,
         *,
         power_command: str,
         power_standby_parameter: str,
@@ -518,7 +518,7 @@ class ZonePlayer(_BasePlayer):
         return self._state.auto_standby
 
     @property
-    def channel_mode(self) -> ZoneChannelMode | None:
+    def channel_mode(self) -> V2015ZoneChannelMode | None:
         return self._state.channel_mode
 
     @property
@@ -559,7 +559,7 @@ class ZonePlayer(_BasePlayer):
 
     # -- Stereo / mono --
 
-    async def set_channel_mode(self, mode: ZoneChannelMode) -> None:
+    async def set_channel_mode(self, mode: V2015ZoneChannelMode) -> None:
         await self._receiver._send_command(self._channel_mode_command, mode.value)
 
     # -- Channel volume (FL / FR only on zones) --
@@ -609,10 +609,10 @@ class ZonePlayer(_BasePlayer):
         await self._receiver._send_command(self._param_command, "TRE DOWN")
 
 
-class Zone4Player:
+class V2015Zone4Player:
     """Control surface for Zone 4 (HDMI passthrough only - no volume/mute)."""
 
-    def __init__(self, receiver: MarantzReceiver, state: Zone4State) -> None:
+    def __init__(self, receiver: MarantzV2015Receiver, state: V2015Zone4State) -> None:
         self._receiver = receiver
         self._state = state
 
@@ -621,7 +621,7 @@ class Zone4Player:
         return self._state.power
 
     @property
-    def input_source(self) -> InputSource | None:
+    def input_source(self) -> V2015InputSource | None:
         return self._state.input_source
 
     @property
@@ -634,7 +634,7 @@ class Zone4Player:
     async def power_standby(self) -> None:
         await self._receiver._send_command("Z4", "OFF")
 
-    async def select_input_source(self, source: InputSource) -> None:
+    async def select_input_source(self, source: V2015InputSource) -> None:
         await self._receiver._send_command("Z4", source.value)
 
     async def cancel_input_source(self) -> None:
@@ -647,4 +647,4 @@ class Zone4Player:
         await self._receiver._send_command("Z4SLP", "OFF")
 
 
-MarantzPlayer: TypeAlias = MainPlayer | ZonePlayer | Zone4Player
+V2015MarantzPlayer: TypeAlias = V2015MainPlayer | V2015ZonePlayer | V2015Zone4Player

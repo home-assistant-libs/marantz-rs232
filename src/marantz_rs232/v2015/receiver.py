@@ -9,52 +9,52 @@ from collections.abc import Callable
 import serialx
 
 from .const import (
-    BAUD_RATE,
-    COMMAND_TIMEOUT,
-    CR,
-    AudioDecodeMode,
-    DComp,
-    DialogEnhancer,
-    DigitalInputMode,
-    DimmerMode,
-    DRC,
-    DynamicVolume,
-    EcoMode,
-    HDMIAudioOutput,
-    HDMIMonitor,
-    HDMIResolution,
-    InputSource,
-    MDAX,
-    MULTI_RESPONSE_DELAY,
-    MultEQ,
-    PROBE_TIMEOUT,
-    TunerBand,
-    TunerMode,
-    VideoProcessMode,
-    ZoneChannelMode,
-    _MULTI_RESPONSE_PREFIXES,
-    _SINGLE_RESPONSE_PREFIXES,
+    V2015_BAUD_RATE,
+    V2015_COMMAND_TIMEOUT,
+    V2015_CR,
+    V2015AudioDecodeMode,
+    V2015DComp,
+    V2015DialogEnhancer,
+    V2015DigitalInputMode,
+    V2015DimmerMode,
+    V2015DRC,
+    V2015DynamicVolume,
+    V2015EcoMode,
+    V2015HDMIAudioOutput,
+    V2015HDMIMonitor,
+    V2015HDMIResolution,
+    V2015InputSource,
+    V2015MDAX,
+    V2015_MULTI_RESPONSE_DELAY,
+    V2015MultEQ,
+    V2015_PROBE_TIMEOUT,
+    V2015TunerBand,
+    V2015TunerMode,
+    V2015VideoProcessMode,
+    V2015ZoneChannelMode,
+    _V2015_MULTI_RESPONSE_PREFIXES,
+    _V2015_SINGLE_RESPONSE_PREFIXES,
 )
-from .players import MainPlayer, Zone4Player, ZonePlayer
+from .players import V2015MainPlayer, V2015Zone4Player, V2015ZonePlayer
 from .protocol import (
     PendingQuery,
     _ZONE_VOL_RE,
     parse_channel_volume_param,
     parse_volume_param,
 )
-from .state import MainZoneState, ReceiverState, Zone4State, ZoneState
+from .state import V2015MainZoneState, V2015ReceiverState, V2015Zone4State, V2015ZoneState
 
 _LOGGER = logging.getLogger(__name__)
 
 
-StateCallback = Callable[[ReceiverState | None], None]
+V2015StateCallback = Callable[[V2015ReceiverState | None], None]
 
 
 # Zone 2/3 sub-prefixes ordered longest-first so startswith matching is unambiguous.
 _ZONE_SUB_PREFIXES = ("STBY", "SLP", "MU", "CS", "CV", "HPF", "PS")
 
 
-class MarantzReceiver:
+class MarantzV2015Receiver:
     """Async controller for a Marantz receiver over RS232."""
 
     def __init__(self, port: str) -> None:
@@ -62,9 +62,9 @@ class MarantzReceiver:
         self._reader: asyncio.StreamReader | None = None
         self._writer: serialx.SerialStreamWriter | None = None
         self._read_task: asyncio.Task | None = None
-        self._state = ReceiverState()
-        self.main = MainPlayer(self, self._state.main_zone)
-        self.zone_2 = ZonePlayer(
+        self._state = V2015ReceiverState()
+        self.main = V2015MainPlayer(self, self._state.main_zone)
+        self.zone_2 = V2015ZonePlayer(
             self,
             self._state.zone_2,
             power_command="Z2",
@@ -79,7 +79,7 @@ class MarantzReceiver:
             hpf_command="Z2HPF",
             param_command="Z2PS",
         )
-        self.zone_3 = ZonePlayer(
+        self.zone_3 = V2015ZonePlayer(
             self,
             self._state.zone_3,
             power_command="Z3",
@@ -94,14 +94,14 @@ class MarantzReceiver:
             hpf_command="Z3HPF",
             param_command="Z3PS",
         )
-        self.zone_4 = Zone4Player(self, self._state.zone_4)
-        self._subscribers: list[StateCallback] = []
+        self.zone_4 = V2015Zone4Player(self, self._state.zone_4)
+        self._subscribers: list[V2015StateCallback] = []
         self._pending_queries: list[PendingQuery] = []
         self._write_lock = asyncio.Lock()
         self._connected = False
 
     @property
-    def state(self) -> ReceiverState:
+    def state(self) -> V2015ReceiverState:
         return self._state.copy()
 
     @property
@@ -112,14 +112,14 @@ class MarantzReceiver:
     def power(self) -> bool | None:
         return self._state.power
 
-    def subscribe(self, callback: StateCallback) -> Callable[[], None]:
+    def subscribe(self, callback: V2015StateCallback) -> Callable[[], None]:
         self._subscribers.append(callback)
         return lambda: self._subscribers.remove(callback)
 
     async def connect(self) -> None:
         self._reader, self._writer = await serialx.open_serial_connection(
             self._port,
-            baudrate=BAUD_RATE,
+            baudrate=V2015_BAUD_RATE,
         )
         self._connected = True
         self._read_task = asyncio.create_task(self._read_loop())
@@ -153,7 +153,7 @@ class MarantzReceiver:
         raise ValueError(f"Unknown power state: {resp}")
 
     async def query_state(self) -> None:
-        for prefix in _SINGLE_RESPONSE_PREFIXES:
+        for prefix in _V2015_SINGLE_RESPONSE_PREFIXES:
             if prefix == "PW":
                 continue
             try:
@@ -161,26 +161,26 @@ class MarantzReceiver:
             except TimeoutError:
                 pass
 
-        for prefix in _MULTI_RESPONSE_PREFIXES:
+        for prefix in _V2015_MULTI_RESPONSE_PREFIXES:
             await self._send_command(prefix, "?")
-            await asyncio.sleep(MULTI_RESPONSE_DELAY)
+            await asyncio.sleep(V2015_MULTI_RESPONSE_DELAY)
 
     async def probe_sources(
         self, timeout: float | None = None
-    ) -> frozenset[InputSource]:
+    ) -> frozenset[V2015InputSource]:
         if not self._connected:
             raise ConnectionError("Not connected")
 
         if timeout is None:
-            timeout = PROBE_TIMEOUT
+            timeout = V2015_PROBE_TIMEOUT
 
         original = self._state.main_zone.input_source
-        available: set[InputSource] = set()
+        available: set[V2015InputSource] = set()
 
         if original is not None:
             available.add(original)
 
-        for source in InputSource:
+        for source in V2015InputSource:
             if source == original:
                 continue
             resp = await self._send_and_wait("SI", source.value, timeout=timeout)
@@ -196,7 +196,7 @@ class MarantzReceiver:
         self, prefix: str, param: str, timeout: float | None = None
     ) -> str | None:
         if timeout is None:
-            timeout = PROBE_TIMEOUT
+            timeout = V2015_PROBE_TIMEOUT
 
         loop = asyncio.get_running_loop()
         future: asyncio.Future[str] = loop.create_future()
@@ -242,7 +242,7 @@ class MarantzReceiver:
                 _LOGGER.exception("Error writing to serial port")
                 await self._teardown()
                 raise
-            return await asyncio.wait_for(future, timeout=COMMAND_TIMEOUT)
+            return await asyncio.wait_for(future, timeout=V2015_COMMAND_TIMEOUT)
         finally:
             if pending in self._pending_queries:
                 self._pending_queries.remove(pending)
@@ -291,8 +291,8 @@ class MarantzReceiver:
 
             buf += data
 
-            while CR in buf:
-                line, buf = buf.split(CR, 1)
+            while V2015_CR in buf:
+                line, buf = buf.split(V2015_CR, 1)
                 if not line:
                     continue
                 message = line.decode("ascii", errors="replace").strip()
@@ -361,7 +361,7 @@ class MarantzReceiver:
 
         elif prefix == "SI":
             try:
-                changed = self._set_state_value("input_source", InputSource(param))
+                changed = self._set_state_value("input_source", V2015InputSource(param))
             except ValueError:
                 _LOGGER.warning("Unknown input source: %s", param)
 
@@ -393,7 +393,7 @@ class MarantzReceiver:
                 try:
                     changed = self._set_state_value(
                         "digital_input",
-                        DigitalInputMode(param),
+                        V2015DigitalInputMode(param),
                     )
                 except ValueError:
                     _LOGGER.warning("Unknown digital input mode: %s", param)
@@ -402,7 +402,7 @@ class MarantzReceiver:
             try:
                 changed = self._set_state_value(
                     "audio_decode",
-                    AudioDecodeMode(param),
+                    V2015AudioDecodeMode(param),
                 )
             except ValueError:
                 _LOGGER.warning("Unknown audio decode mode: %s", param)
@@ -414,7 +414,7 @@ class MarantzReceiver:
                 pass
             else:
                 try:
-                    changed = self._set_state_value("video_select", InputSource(param))
+                    changed = self._set_state_value("video_select", V2015InputSource(param))
                 except ValueError:
                     _LOGGER.warning("Unknown video source: %s", param)
 
@@ -451,7 +451,7 @@ class MarantzReceiver:
             prefix = "ECO"
             param = message[3:]
             try:
-                changed = self._set_state_value("eco", EcoMode(param))
+                changed = self._set_state_value("eco", V2015EcoMode(param))
             except ValueError:
                 if param != "?":
                     _LOGGER.warning("Unknown ECO mode: %s", param)
@@ -468,7 +468,7 @@ class MarantzReceiver:
             prefix = "DIM"
             param = message[3:].strip()
             try:
-                changed = self._set_state_value("dimmer", DimmerMode(param))
+                changed = self._set_state_value("dimmer", V2015DimmerMode(param))
             except ValueError:
                 if param not in ("?", "SEL"):
                     _LOGGER.warning("Unknown dimmer mode: %s", param)
@@ -489,10 +489,10 @@ class MarantzReceiver:
             prefix = "TMAN"
             param = message[4:]
             try:
-                changed = self._set_state_value("tuner_band", TunerBand(param))
+                changed = self._set_state_value("tuner_band", V2015TunerBand(param))
             except ValueError:
                 try:
-                    changed = self._set_state_value("tuner_mode", TunerMode(param))
+                    changed = self._set_state_value("tuner_mode", V2015TunerMode(param))
                 except ValueError:
                     if param != "?":
                         _LOGGER.warning("Unknown tuner setting: %s", param)
@@ -554,9 +554,9 @@ class MarantzReceiver:
             if val == "?":
                 return False
             try:
-                return self._set_state_value("multeq", MultEQ(val))
+                return self._set_state_value("multeq", V2015MultEQ(val))
             except ValueError:
-                _LOGGER.warning("Unknown MultEQ mode: %s", val)
+                _LOGGER.warning("Unknown V2015MultEQ mode: %s", val)
                 return False
 
         if param.startswith("DYNEQ "):
@@ -572,7 +572,7 @@ class MarantzReceiver:
             if val == "?":
                 return False
             try:
-                return self._set_state_value("dynamic_volume", DynamicVolume(val))
+                return self._set_state_value("dynamic_volume", V2015DynamicVolume(val))
             except ValueError:
                 _LOGGER.warning("Unknown dynamic volume: %s", val)
                 return False
@@ -582,7 +582,7 @@ class MarantzReceiver:
             if val == "?":
                 return False
             try:
-                return self._set_state_value("drc", DRC(val))
+                return self._set_state_value("drc", V2015DRC(val))
             except ValueError:
                 _LOGGER.warning("Unknown DRC mode: %s", val)
                 return False
@@ -608,7 +608,7 @@ class MarantzReceiver:
             if val == "?":
                 return False
             try:
-                return self._set_state_value("dialog_enhancer", DialogEnhancer(val))
+                return self._set_state_value("dialog_enhancer", V2015DialogEnhancer(val))
             except ValueError:
                 _LOGGER.warning("Unknown dialog enhancer mode: %s", val)
                 return False
@@ -634,7 +634,7 @@ class MarantzReceiver:
             if val == "?":
                 return False
             try:
-                return self._set_state_value("mdax", MDAX(val))
+                return self._set_state_value("mdax", V2015MDAX(val))
             except ValueError:
                 _LOGGER.warning("Unknown M-DAX mode: %s", val)
                 return False
@@ -661,7 +661,7 @@ class MarantzReceiver:
             if val == "?":
                 return False
             try:
-                return self._set_state_value("d_comp", DComp(val))
+                return self._set_state_value("d_comp", V2015DComp(val))
             except ValueError:
                 _LOGGER.warning("Unknown D.COMP mode: %s", val)
                 return False
@@ -719,7 +719,7 @@ class MarantzReceiver:
 
         if param.startswith("MONI"):
             try:
-                changed = self._set_state_value("hdmi_monitor", HDMIMonitor(param))
+                changed = self._set_state_value("hdmi_monitor", V2015HDMIMonitor(param))
             except ValueError:
                 if param != "MONI ?":
                     _LOGGER.debug("Unknown HDMI monitor: %s", param)
@@ -729,20 +729,20 @@ class MarantzReceiver:
             else:
                 try:
                     changed = self._set_state_value(
-                        "hdmi_audio_output", HDMIAudioOutput(param)
+                        "hdmi_audio_output", V2015HDMIAudioOutput(param)
                     )
                 except ValueError:
                     _LOGGER.debug("Unknown HDMI audio output: %s", param)
         elif param.startswith("SC"):
             try:
-                changed = self._set_state_value("hdmi_resolution", HDMIResolution(param))
+                changed = self._set_state_value("hdmi_resolution", V2015HDMIResolution(param))
             except ValueError:
                 if not param.endswith("?"):
                     _LOGGER.debug("Unknown HDMI resolution: %s", param)
         elif param.startswith("VPM"):
             try:
                 changed = self._set_state_value(
-                    "video_process_mode", VideoProcessMode(param)
+                    "video_process_mode", V2015VideoProcessMode(param)
                 )
             except ValueError:
                 if param != "VPM ?":
@@ -785,7 +785,7 @@ class MarantzReceiver:
         return "SY", param, changed
 
     def _process_zone_message(
-        self, zone: ZoneState, zone_prefix: str, message: str
+        self, zone: V2015ZoneState, zone_prefix: str, message: str
     ) -> tuple[str, str, bool]:
         """Parse Z2*/Z3* responses, returning (matched_prefix, param, changed)."""
         rest = message[2:]
@@ -803,7 +803,7 @@ class MarantzReceiver:
         return zone_prefix, rest, changed
 
     def _process_zone_sub(
-        self, zone: ZoneState, sub: str, param: str
+        self, zone: V2015ZoneState, sub: str, param: str
     ) -> bool:
         """Handle Z*<sub><param> messages."""
         if sub == "MU":
@@ -829,7 +829,7 @@ class MarantzReceiver:
 
         if sub == "CS":
             try:
-                return self._set_attr_value(zone, "channel_mode", ZoneChannelMode(param))
+                return self._set_attr_value(zone, "channel_mode", V2015ZoneChannelMode(param))
             except ValueError:
                 if param != "?":
                     _LOGGER.warning("Unknown zone channel mode: %s", param)
@@ -875,7 +875,7 @@ class MarantzReceiver:
 
         return False
 
-    def _process_zone_param(self, zone: ZoneState, param: str) -> bool:
+    def _process_zone_param(self, zone: V2015ZoneState, param: str) -> bool:
         if param == "ON":
             return self._set_attr_value(zone, "power", True)
         if param == "OFF":
@@ -894,7 +894,7 @@ class MarantzReceiver:
         if param == "SOURCE":
             return self._set_attr_value(zone, "input_source", None)
         try:
-            return self._set_attr_value(zone, "input_source", InputSource(param))
+            return self._set_attr_value(zone, "input_source", V2015InputSource(param))
         except ValueError:
             _LOGGER.warning("Unknown zone source: %s", param)
             return False
@@ -922,7 +922,7 @@ class MarantzReceiver:
 
         # Try input source
         try:
-            changed = self._set_attr_value(zone, "input_source", InputSource(rest))
+            changed = self._set_attr_value(zone, "input_source", V2015InputSource(rest))
             return "Z4", rest, changed
         except ValueError:
             _LOGGER.debug("Unknown Z4 message: %s", message)

@@ -7,16 +7,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import marantz_rs232
-import marantz_rs232.receiver as marantz_receiver
-from marantz_rs232 import MarantzReceiver
+import marantz_rs232.v2015.receiver as marantz_receiver
+from marantz_rs232 import MarantzV2015Receiver
 
 # Speed up tests by reducing delays
-marantz_rs232.COMMAND_TIMEOUT = 0.1
-marantz_rs232.MULTI_RESPONSE_DELAY = 0.01
-marantz_rs232.PROBE_TIMEOUT = 0.01
-marantz_receiver.COMMAND_TIMEOUT = 0.1
-marantz_receiver.MULTI_RESPONSE_DELAY = 0.01
-marantz_receiver.PROBE_TIMEOUT = 0.01
+marantz_rs232.V2015_COMMAND_TIMEOUT = 0.1
+marantz_rs232.V2015_MULTI_RESPONSE_DELAY = 0.01
+marantz_rs232.V2015_PROBE_TIMEOUT = 0.01
+marantz_receiver.V2015_COMMAND_TIMEOUT = 0.1
+marantz_receiver.V2015_MULTI_RESPONSE_DELAY = 0.01
+marantz_receiver.V2015_PROBE_TIMEOUT = 0.01
 
 DEFAULT_QUERY_RESPONSES: dict[str, list[str]] = {
     "PW": ["PWON"],
@@ -113,15 +113,15 @@ async def mock_serial():
 
 @pytest.fixture
 async def receiver(mock_serial):
-    """Create a connected MarantzReceiver with mocked serial."""
-    recv = MarantzReceiver("/dev/ttyUSB0")
+    """Create a connected MarantzV2015Receiver with mocked serial."""
+    recv = MarantzV2015Receiver("/dev/ttyUSB0")
     mock_serial._query_responses = dict(DEFAULT_QUERY_RESPONSES)
 
     async def fake_open(*args, **kwargs):
         return mock_serial.reader, mock_serial.writer
 
     with patch(
-        "marantz_rs232.receiver.serialx.open_serial_connection",
+        "marantz_rs232.v2015.receiver.serialx.open_serial_connection",
         side_effect=fake_open,
     ):
         await recv.connect()
@@ -135,16 +135,16 @@ async def receiver(mock_serial):
         await recv.disconnect()
 
 
-async def connect_with_defaults(mock: MockSerialConnection) -> MarantzReceiver:
+async def connect_with_defaults(mock: MockSerialConnection) -> MarantzV2015Receiver:
     """Helper: connect a receiver with default auto-responses."""
     mock._query_responses = dict(DEFAULT_QUERY_RESPONSES)
-    recv = MarantzReceiver("/dev/ttyUSB0")
+    recv = MarantzV2015Receiver("/dev/ttyUSB0")
 
     async def fake_open(*args, **kwargs):
         return mock.reader, mock.writer
 
     with patch(
-        "marantz_rs232.receiver.serialx.open_serial_connection",
+        "marantz_rs232.v2015.receiver.serialx.open_serial_connection",
         side_effect=fake_open,
     ):
         await recv.connect()

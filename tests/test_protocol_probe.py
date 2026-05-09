@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from marantz_rs232 import MarantzLegacyReceiver, MarantzReceiver, probe
+from marantz_rs232 import MarantzV2007Receiver, MarantzV2015Receiver, probe
 
 
 async def _run_probe_with_first_byte(first_byte: bytes) -> type:
@@ -32,12 +32,12 @@ async def _run_probe_with_first_byte(first_byte: bytes) -> type:
 
 async def test_probe_detects_legacy_when_first_byte_is_at_sign() -> None:
     cls = await _run_probe_with_first_byte(b"@PWR:2\r")
-    assert cls is MarantzLegacyReceiver
+    assert cls is MarantzV2007Receiver
 
 
 async def test_probe_detects_modern_when_first_byte_is_p() -> None:
     cls = await _run_probe_with_first_byte(b"PWON\r")
-    assert cls is MarantzReceiver
+    assert cls is MarantzV2015Receiver
 
 
 async def test_probe_raises_on_silent_port() -> None:

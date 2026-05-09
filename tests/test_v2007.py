@@ -8,14 +8,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-import marantz_rs232.legacy.receiver as legacy_receiver
+import marantz_rs232.v2007.receiver as v2007_receiver
 from marantz_rs232 import (
-    LegacyReceiverState,
-    LegacySource,
-    LegacySurroundCode,
-    MarantzLegacyReceiver,
+    V2007ReceiverState,
+    V2007Source,
+    V2007SurroundCode,
+    MarantzV2007Receiver,
 )
-from marantz_rs232.legacy.protocol import (
+from marantz_rs232.v2007.protocol import (
     encode_query,
     encode_set_command,
     encode_volume,
@@ -24,7 +24,7 @@ from marantz_rs232.legacy.protocol import (
 )
 
 # Speed up the legacy command timeout for the test suite.
-legacy_receiver.LEGACY_COMMAND_TIMEOUT = 0.02
+v2007_receiver.V2007_COMMAND_TIMEOUT = 0.02
 
 
 # -- Wire encoding/decoding ---------------------------------------------------
@@ -145,7 +145,7 @@ class _MockSerial:
         self.reader.feed_data(line.encode("ascii"))
 
 
-_DEFAULT_LEGACY_RESPONSES: dict[str, list[str]] = {
+_DEFAULT_V2007_RESPONSES: dict[str, list[str]] = {
     "PWR": ["PWR:2"],
     "ATT": ["ATT:1"],
     "AMT": ["AMT:1"],
@@ -193,15 +193,15 @@ async def mock_serial() -> _MockSerial:
 
 @pytest.fixture
 async def receiver(mock_serial: _MockSerial):
-    """Create a connected MarantzLegacyReceiver with mocked serial."""
-    recv = MarantzLegacyReceiver("/dev/ttyUSB0")
-    mock_serial.query_responses = dict(_DEFAULT_LEGACY_RESPONSES)
+    """Create a connected MarantzV2007Receiver with mocked serial."""
+    recv = MarantzV2007Receiver("/dev/ttyUSB0")
+    mock_serial.query_responses = dict(_DEFAULT_V2007_RESPONSES)
 
     async def fake_open(*_a, **_kw):
         return mock_serial.reader, mock_serial.writer
 
     with patch(
-        "marantz_rs232.legacy.receiver.serialx.open_serial_connection",
+        "marantz_rs232.v2007.receiver.serialx.open_serial_connection",
         side_effect=fake_open,
     ):
         await recv.connect()
@@ -219,14 +219,14 @@ async def receiver(mock_serial: _MockSerial):
 
 
 async def test_connect_verifies_with_pwr_query(mock_serial: _MockSerial) -> None:
-    recv = MarantzLegacyReceiver("/dev/ttyUSB0")
+    recv = MarantzV2007Receiver("/dev/ttyUSB0")
     mock_serial.query_responses = {"PWR": ["PWR:2"]}
 
     async def fake_open(*_a, **_kw):
         return mock_serial.reader, mock_serial.writer
 
     with patch(
-        "marantz_rs232.legacy.receiver.serialx.open_serial_connection",
+        "marantz_rs232.v2007.receiver.serialx.open_serial_connection",
         side_effect=fake_open,
     ):
         await recv.connect()
@@ -240,14 +240,14 @@ async def test_connect_verifies_with_pwr_query(mock_serial: _MockSerial) -> None
 
 
 async def test_connect_raises_when_no_response(mock_serial: _MockSerial) -> None:
-    recv = MarantzLegacyReceiver("/dev/ttyUSB0")
+    recv = MarantzV2007Receiver("/dev/ttyUSB0")
     # No responses registered → query times out.
 
     async def fake_open(*_a, **_kw):
         return mock_serial.reader, mock_serial.writer
 
     with patch(
-        "marantz_rs232.legacy.receiver.serialx.open_serial_connection",
+        "marantz_rs232.v2007.receiver.serialx.open_serial_connection",
         side_effect=fake_open,
     ):
         with pytest.raises(ConnectionError):
@@ -255,14 +255,14 @@ async def test_connect_raises_when_no_response(mock_serial: _MockSerial) -> None
 
 
 async def test_connect_enables_auto_status_feedback(mock_serial: _MockSerial) -> None:
-    recv = MarantzLegacyReceiver("/dev/ttyUSB0")
+    recv = MarantzV2007Receiver("/dev/ttyUSB0")
     mock_serial.query_responses = {"PWR": ["PWR:2"]}
 
     async def fake_open(*_a, **_kw):
         return mock_serial.reader, mock_serial.writer
 
     with patch(
-        "marantz_rs232.legacy.receiver.serialx.open_serial_connection",
+        "marantz_rs232.v2007.receiver.serialx.open_serial_connection",
         side_effect=fake_open,
     ):
         await recv.connect()
@@ -275,7 +275,7 @@ async def test_connect_enables_auto_status_feedback(mock_serial: _MockSerial) ->
 # -- Query state --------------------------------------------------------------
 
 
-async def test_query_state_populates_all_fields(receiver: MarantzLegacyReceiver) -> None:
+async def test_query_state_populates_all_fields(receiver: MarantzV2007Receiver) -> None:
     s = receiver.state.main
     assert s.power is True
     assert s.mute is False
@@ -293,7 +293,7 @@ async def test_query_state_populates_all_fields(receiver: MarantzLegacyReceiver)
 
 
 async def test_power_on_sends_pwr_2(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.power_on()
@@ -301,7 +301,7 @@ async def test_power_on_sends_pwr_2(
 
 
 async def test_power_off_sends_pwr_1(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.power_off()
@@ -309,7 +309,7 @@ async def test_power_off_sends_pwr_1(
 
 
 async def test_mute_on_sends_amt_2(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.mute_on()
@@ -317,7 +317,7 @@ async def test_mute_on_sends_amt_2(
 
 
 async def test_set_volume_encodes_correctly(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.set_volume(-13.5)
@@ -325,7 +325,7 @@ async def test_set_volume_encodes_correctly(
 
 
 async def test_set_volume_zero(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.set_volume(0.0)
@@ -333,7 +333,7 @@ async def test_set_volume_zero(
 
 
 async def test_volume_up_sends_vol_1(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.volume_up()
@@ -341,7 +341,7 @@ async def test_volume_up_sends_vol_1(
 
 
 async def test_set_bass(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.set_bass(-3)
@@ -349,28 +349,28 @@ async def test_set_bass(
 
 
 async def test_set_treble_positive(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.set_treble(6)
     assert b"@TOT:0+06\r" in mock_serial.written
 
 
-async def test_set_bass_out_of_range(receiver: MarantzLegacyReceiver) -> None:
+async def test_set_bass_out_of_range(receiver: MarantzV2007Receiver) -> None:
     with pytest.raises(ValueError):
         await receiver.main.set_bass(10)
 
 
 async def test_select_source_with_enum(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
-    await receiver.main.select_source(LegacySource.CD_CDR)
+    await receiver.main.select_source(V2007Source.CD_CDR)
     assert b"@SRC:C\r" in mock_serial.written
 
 
 async def test_select_source_with_string(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.select_source("F")
@@ -378,15 +378,15 @@ async def test_select_source_with_string(
 
 
 async def test_set_surround_prepends_zero(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
-    await receiver.main.set_surround_mode(LegacySurroundCode.AUTO.value)
+    await receiver.main.set_surround_mode(V2007SurroundCode.AUTO.value)
     assert b"@SUR:00\r" in mock_serial.written
 
 
 async def test_surround_next(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.surround_next()
@@ -394,7 +394,7 @@ async def test_surround_next(
 
 
 async def test_set_sleep(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.set_sleep(30)
@@ -402,14 +402,14 @@ async def test_set_sleep(
 
 
 async def test_sleep_off(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.sleep_off()
     assert b"@SLP:1\r" in mock_serial.written
 
 
-async def test_set_sleep_out_of_range(receiver: MarantzLegacyReceiver) -> None:
+async def test_set_sleep_out_of_range(receiver: MarantzV2007Receiver) -> None:
     with pytest.raises(ValueError):
         await receiver.main.set_sleep(200)
 
@@ -418,9 +418,9 @@ async def test_set_sleep_out_of_range(receiver: MarantzLegacyReceiver) -> None:
 
 
 async def test_unsolicited_volume_update_propagates(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
-    updates: list[LegacyReceiverState | None] = []
+    updates: list[V2007ReceiverState | None] = []
     receiver.subscribe(lambda s: updates.append(s))
 
     mock_serial.feed("VOL:-25")
@@ -431,7 +431,7 @@ async def test_unsolicited_volume_update_propagates(
 
 
 async def test_unsolicited_source_update_propagates(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.feed("SRC:F2")  # video=F (TUNER1), audio=2 (DVD)
     await asyncio.sleep(0.05)
@@ -441,7 +441,7 @@ async def test_unsolicited_source_update_propagates(
 
 
 async def test_query_returns_response_value(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.query_responses = {"VOL": ["VOL:-25"]}
     result = await receiver.main.query_volume()
@@ -452,9 +452,9 @@ async def test_query_returns_response_value(
 
 
 async def test_disconnect_notifies_subscribers_with_none(
-    receiver: MarantzLegacyReceiver,
+    receiver: MarantzV2007Receiver,
 ) -> None:
-    updates: list[LegacyReceiverState | None] = []
+    updates: list[V2007ReceiverState | None] = []
     receiver.subscribe(lambda s: updates.append(s))
 
     await receiver.disconnect()
@@ -467,21 +467,21 @@ async def test_disconnect_notifies_subscribers_with_none(
 
 
 from marantz_rs232 import (
-    LegacyDolbyHeadphone,
-    LegacyEQMode,
-    LegacyHDMIAudioMode,
-    LegacyHDMIChannel,
-    LegacyIPConverter,
-    LegacyMDAX,
-    LegacyMenu,
-    LegacyModel,
-    LegacyNightMode,
-    LegacyStereoMode,
-    LegacyTHXSet,
-    LegacyTunerMode,
-    LegacyVolumeMode,
+    V2007DolbyHeadphone,
+    V2007EQMode,
+    V2007HDMIAudioMode,
+    V2007HDMIChannel,
+    V2007IPConverter,
+    V2007MDAX,
+    V2007Menu,
+    V2007Model,
+    V2007NightMode,
+    V2007StereoMode,
+    V2007THXSet,
+    V2007TunerMode,
+    V2007VolumeMode,
 )
-from marantz_rs232.legacy.protocol import (
+from marantz_rs232.v2007.protocol import (
     decode_tuner_frequency,
     encode_tone,
     encode_tuner_frequency_am_khz,
@@ -536,7 +536,7 @@ def test_encode_tuner_fm_below_min_raises() -> None:
 
 
 async def test_query_state_populates_phase2_fields(
-    receiver: MarantzLegacyReceiver,
+    receiver: MarantzV2007Receiver,
 ) -> None:
     s = receiver.state.main
     # Phase 1 fields still populated (regression check)
@@ -546,21 +546,21 @@ async def test_query_state_populates_phase2_fields(
     assert s.seven_one_input is False
     assert s.speaker_a is True
     assert s.speaker_b is False
-    assert s.hdmi_channel is LegacyHDMIChannel.CH1
-    assert s.hdmi_audio_mode is LegacyHDMIAudioMode.ENABLE
-    assert s.ip_converter is LegacyIPConverter.ENABLE
+    assert s.hdmi_channel is V2007HDMIChannel.CH1
+    assert s.hdmi_audio_mode is V2007HDMIAudioMode.ENABLE
+    assert s.ip_converter is V2007IPConverter.ENABLE
     assert s.front_key_lock is False
     assert s.dc_trigger_1 is False
     assert s.dc_trigger_2 is False
     assert s.thx_mode == "0"
-    assert s.eq_mode is LegacyEQMode.OFF
-    assert s.dolby_headphone_mode is LegacyDolbyHeadphone.BYPASS
-    assert s.night_mode is LegacyNightMode.OFF
-    assert s.mdax is LegacyMDAX.OFF
+    assert s.eq_mode is V2007EQMode.OFF
+    assert s.dolby_headphone_mode is V2007DolbyHeadphone.BYPASS
+    assert s.night_mode is V2007NightMode.OFF
+    assert s.mdax is V2007MDAX.OFF
     assert s.lip_sync_ms == 0
     assert s.tuner_frequency_raw == "08750"
     assert s.tuner_preset == 1
-    assert s.tuner_mode is LegacyTunerMode.AUTO
+    assert s.tuner_mode is V2007TunerMode.AUTO
     assert s.firmware_version == "1.00"
 
 
@@ -568,39 +568,39 @@ async def test_query_state_populates_phase2_fields(
 
 
 async def test_set_thx_mode(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
-    await receiver.main.set_thx_mode(LegacyTHXSet.CINEMA)
+    await receiver.main.set_thx_mode(V2007THXSet.CINEMA)
     assert b"@THX:5\r" in mock_serial.written
 
 
 async def test_set_eq_mode(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
-    await receiver.main.set_eq_mode(LegacyEQMode.AUDYSSEY_CURVE)
+    await receiver.main.set_eq_mode(V2007EQMode.AUDYSSEY_CURVE)
     assert b"@EQM:5\r" in mock_serial.written
 
 
 async def test_set_night_mode_auto(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
-    await receiver.main.set_night_mode(LegacyNightMode.AUTO)
+    await receiver.main.set_night_mode(V2007NightMode.AUTO)
     assert b"@NGT:3\r" in mock_serial.written
 
 
 async def test_set_mdax(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
-    await receiver.main.set_mdax(LegacyMDAX.HIGH)
+    await receiver.main.set_mdax(V2007MDAX.HIGH)
     assert b"@MDA:3\r" in mock_serial.written
 
 
 async def test_set_lip_sync(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.set_lip_sync(80)
@@ -608,7 +608,7 @@ async def test_set_lip_sync(
 
 
 async def test_speaker_a_on(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.speaker_a_on()
@@ -616,15 +616,15 @@ async def test_speaker_a_on(
 
 
 async def test_set_hdmi_channel(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
-    await receiver.main.set_hdmi_channel(LegacyHDMIChannel.CH2)
+    await receiver.main.set_hdmi_channel(V2007HDMIChannel.CH2)
     assert b"@HDM:2\r" in mock_serial.written
 
 
 async def test_attenuator_on(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.attenuator_on()
@@ -632,7 +632,7 @@ async def test_attenuator_on(
 
 
 async def test_dc_trigger_1_on(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.dc_trigger_1_on()
@@ -640,7 +640,7 @@ async def test_dc_trigger_1_on(
 
 
 async def test_dc_trigger_2_off(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.dc_trigger_2_off()
@@ -648,7 +648,7 @@ async def test_dc_trigger_2_off(
 
 
 async def test_set_tuner_fm(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.set_tuner_fm_frequency(101.10)
@@ -656,7 +656,7 @@ async def test_set_tuner_fm(
 
 
 async def test_set_tuner_preset(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.main.set_tuner_preset(7)
@@ -664,7 +664,7 @@ async def test_set_tuner_preset(
 
 
 async def test_decode_tuner_frequency_via_receiver(
-    receiver: MarantzLegacyReceiver,
+    receiver: MarantzV2007Receiver,
 ) -> None:
     # Default state has TFQ:08750 → FM 87.50 MHz
     band, value = receiver.decode_tuner_frequency()
@@ -676,7 +676,7 @@ async def test_decode_tuner_frequency_via_receiver(
 
 
 async def test_dct_status_propagates_both_triggers(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.feed("DCT:22")
     await asyncio.sleep(0.05)
@@ -685,7 +685,7 @@ async def test_dct_status_propagates_both_triggers(
 
 
 async def test_spk_status_propagates_both_speakers(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.feed("SPK:12")
     await asyncio.sleep(0.05)
@@ -694,7 +694,7 @@ async def test_spk_status_propagates_both_speakers(
 
 
 async def test_unsolicited_thx_update(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.feed("THX:e")  # CINEMA per status table
     await asyncio.sleep(0.05)
@@ -702,20 +702,20 @@ async def test_unsolicited_thx_update(
 
 
 async def test_unsolicited_signal_format_update(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
-    from marantz_rs232 import LegacySignalFormat
+    from marantz_rs232 import V2007SignalFormat
 
     mock_serial.feed("SIG:H")  # DD True HD
     await asyncio.sleep(0.05)
-    assert receiver.state.main.signal_format is LegacySignalFormat.DD_TRUE_HD
+    assert receiver.state.main.signal_format is V2007SignalFormat.DD_TRUE_HD
 
 
 # -- Multi Room A ------------------------------------------------------------
 
 
 async def test_multiroom_a_power_on(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.multi_room_a.power_on()
@@ -723,7 +723,7 @@ async def test_multiroom_a_power_on(
 
 
 async def test_multiroom_a_set_volume(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.multi_room_a.set_line_volume(-20.0)
@@ -731,15 +731,15 @@ async def test_multiroom_a_set_volume(
 
 
 async def test_multiroom_a_select_source(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
-    await receiver.multi_room_a.select_source(LegacySource.TUNER1)
+    await receiver.multi_room_a.select_source(V2007Source.TUNER1)
     assert b"@MSC:F\r" in mock_serial.written
 
 
 async def test_multiroom_a_state_updates(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.feed("MPW:2")
     mock_serial.feed("MVL:-15")
@@ -754,10 +754,10 @@ async def test_multiroom_a_state_updates(
 
 
 async def test_multiroom_a_set_stereo_mode(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
-    await receiver.multi_room_a.set_stereo_mode(LegacyStereoMode.MONO)
+    await receiver.multi_room_a.set_stereo_mode(V2007StereoMode.MONO)
     assert b"@MST:2\r" in mock_serial.written
 
 
@@ -765,7 +765,7 @@ async def test_multiroom_a_set_stereo_mode(
 
 
 async def test_multiroom_b_power_on_uses_equals_separator(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.written.clear()
     await receiver.multi_room_b.power_on()
@@ -773,7 +773,7 @@ async def test_multiroom_b_power_on_uses_equals_separator(
 
 
 async def test_multiroom_b_state_updates_via_equals_separator(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     # Receiver echoes back with `=` separator
     mock_serial.reader.feed_data(b"@MPW=2\r")
@@ -791,7 +791,7 @@ async def test_multiroom_b_state_updates_via_equals_separator(
 
 
 async def test_hd_radio_metadata_updates_state(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
     mock_serial.reader.feed_data(b"@CHN*WBEZ FM 91.5\r")
     mock_serial.reader.feed_data(b"@SON*MORNING EDITION\r")
@@ -805,18 +805,18 @@ async def test_hd_radio_metadata_updates_state(
 # -- Status-only queries ---------------------------------------------------
 
 
-async def test_query_firmware_version(receiver: MarantzLegacyReceiver) -> None:
+async def test_query_firmware_version(receiver: MarantzV2007Receiver) -> None:
     assert receiver.state.main.firmware_version == "1.00"
 
 
 async def test_input_signal_status(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial
 ) -> None:
-    from marantz_rs232 import LegacyInputSignal
+    from marantz_rs232 import V2007InputSignal
 
     mock_serial.feed("ISG:2")
     await asyncio.sleep(0.05)
-    assert receiver.state.main.input_signal is LegacyInputSignal.DIGITAL
+    assert receiver.state.main.input_signal is V2007InputSignal.DIGITAL
 
 
 # -- Auto Lip Sync (HAL → ALS asymmetry) ----------------------------------
@@ -826,7 +826,7 @@ async def test_query_auto_lip_sync_uses_als_response(
     mock_serial: _MockSerial,
 ) -> None:
     """The HAL query must accept an ALS response per the spec."""
-    recv = MarantzLegacyReceiver("/dev/ttyUSB0")
+    recv = MarantzV2007Receiver("/dev/ttyUSB0")
     mock_serial.query_responses = {
         "PWR": ["PWR:2"],
         # Mock returns ALS response when HAL is queried.
@@ -837,7 +837,7 @@ async def test_query_auto_lip_sync_uses_als_response(
         return mock_serial.reader, mock_serial.writer
 
     with patch(
-        "marantz_rs232.legacy.receiver.serialx.open_serial_connection",
+        "marantz_rs232.v2007.receiver.serialx.open_serial_connection",
         side_effect=fake_open,
     ):
         await recv.connect()
@@ -853,29 +853,29 @@ async def test_query_auto_lip_sync_uses_als_response(
 
 
 def test_model_defaults_to_generic() -> None:
-    r = MarantzLegacyReceiver("/dev/null")
-    assert r.model is LegacyModel.GENERIC
+    r = MarantzV2007Receiver("/dev/null")
+    assert r.model is V2007Model.GENERIC
 
 
 def test_model_can_be_specified() -> None:
-    r = MarantzLegacyReceiver("/dev/null", model=LegacyModel.SR8002)
-    assert r.model is LegacyModel.SR8002
+    r = MarantzV2007Receiver("/dev/null", model=V2007Model.SR8002)
+    assert r.model is V2007Model.SR8002
 
 
 # -- Per-model gating warnings --------------------------------------------
 
 
 async def test_sr8002_only_command_warns_on_sr7002(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial, caplog
 ) -> None:
     """SR8002-only commands should warn when called on a non-SR8002 model."""
     import logging
-    from marantz_rs232 import LegacyComponent2
+    from marantz_rs232 import V2007Component2
 
     caplog.set_level(logging.WARNING)
     mock_serial.written.clear()
 
-    await receiver.main.set_component2(LegacyComponent2.MAIN)
+    await receiver.main.set_component2(V2007Component2.MAIN)
 
     # The command is still sent (graceful fallback) ...
     assert b"@CM2:1\r" in mock_serial.written
@@ -888,9 +888,9 @@ async def test_sr8002_only_command_silent_on_sr8002_model(
 ) -> None:
     """The same command should not warn when the model is set to SR8002."""
     import logging
-    from marantz_rs232 import LegacyComponent2
+    from marantz_rs232 import V2007Component2
 
-    recv = MarantzLegacyReceiver("/dev/ttyUSB0", model=LegacyModel.SR8002)
+    recv = MarantzV2007Receiver("/dev/ttyUSB0", model=V2007Model.SR8002)
     mock_serial.query_responses = {"PWR": ["PWR:2"]}
 
     async def fake_open(*_a, **_kw):
@@ -898,14 +898,14 @@ async def test_sr8002_only_command_silent_on_sr8002_model(
 
     caplog.set_level(logging.WARNING)
     with patch(
-        "marantz_rs232.legacy.receiver.serialx.open_serial_connection",
+        "marantz_rs232.v2007.receiver.serialx.open_serial_connection",
         side_effect=fake_open,
     ):
         await recv.connect()
         try:
             mock_serial.written.clear()
             caplog.clear()
-            await recv.main.set_component2(LegacyComponent2.MAIN)
+            await recv.main.set_component2(V2007Component2.MAIN)
             assert b"@CM2:1\r" in mock_serial.written
             assert not any(
                 "SR8002-only" in rec.message for rec in caplog.records
@@ -915,7 +915,7 @@ async def test_sr8002_only_command_silent_on_sr8002_model(
 
 
 async def test_multi_room_b_warns_on_sr7002(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial, caplog
 ) -> None:
     """Sending via the `=` separator should warn when model isn't SR8002."""
     import logging
@@ -930,17 +930,17 @@ async def test_multi_room_b_warns_on_sr7002(
 
 
 async def test_warning_only_logged_once_per_feature(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial, caplog
 ) -> None:
     """Repeated calls to the same SR8002-only feature warn once, not every time."""
     import logging
-    from marantz_rs232 import LegacyComponent2
+    from marantz_rs232 import V2007Component2
 
     caplog.set_level(logging.WARNING)
 
-    await receiver.main.set_component2(LegacyComponent2.MAIN)
-    await receiver.main.set_component2(LegacyComponent2.MULTI)
-    await receiver.main.set_component2(LegacyComponent2.MAIN)
+    await receiver.main.set_component2(V2007Component2.MAIN)
+    await receiver.main.set_component2(V2007Component2.MULTI)
+    await receiver.main.set_component2(V2007Component2.MAIN)
 
     component2_warnings = [
         rec for rec in caplog.records if "Component2" in rec.message
@@ -949,7 +949,7 @@ async def test_warning_only_logged_once_per_feature(
 
 
 async def test_hd_radio_query_warns_on_sr7002(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial, caplog
 ) -> None:
     """HD Radio metadata queries warn on non-SR8002 models."""
     import logging
@@ -962,27 +962,27 @@ async def test_hd_radio_query_warns_on_sr7002(
 
 
 async def test_digital_auto_tuner_mode_warns_on_sr7002(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial, caplog
 ) -> None:
-    """LegacyTunerMode.DIGITAL_AUTO is HD-only and warns on non-SR8002 models."""
+    """V2007TunerMode.DIGITAL_AUTO is HD-only and warns on non-SR8002 models."""
     import logging
 
     caplog.set_level(logging.WARNING)
 
-    await receiver.main.set_tuner_mode(LegacyTunerMode.DIGITAL_AUTO)
+    await receiver.main.set_tuner_mode(V2007TunerMode.DIGITAL_AUTO)
 
     assert any("HD Radio" in rec.message for rec in caplog.records)
 
 
 async def test_non_hd_tuner_mode_does_not_warn(
-    receiver: MarantzLegacyReceiver, mock_serial: _MockSerial, caplog
+    receiver: MarantzV2007Receiver, mock_serial: _MockSerial, caplog
 ) -> None:
     """Setting AUTO or MONO on the SR7002 should not trigger warnings."""
     import logging
 
     caplog.set_level(logging.WARNING)
 
-    await receiver.main.set_tuner_mode(LegacyTunerMode.AUTO)
-    await receiver.main.set_tuner_mode(LegacyTunerMode.MONO)
+    await receiver.main.set_tuner_mode(V2007TunerMode.AUTO)
+    await receiver.main.set_tuner_mode(V2007TunerMode.MONO)
 
     assert not any("SR8002" in rec.message for rec in caplog.records)

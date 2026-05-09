@@ -5,23 +5,23 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .const import (
-    LegacyComponent2,
-    LegacyCursor,
-    LegacyDolbyHeadphone,
-    LegacyEQMode,
-    LegacyHDMIAudioMode,
-    LegacyHDMIChannel,
-    LegacyIPConverter,
-    LegacyMDAX,
-    LegacyMenu,
-    LegacyNightMode,
-    LegacyPower,
-    LegacySource,
-    LegacyStereoMode,
-    LegacyTHXSet,
-    LegacyTriState,
-    LegacyTunerMode,
-    LegacyVolumeMode,
+    V2007Component2,
+    V2007Cursor,
+    V2007DolbyHeadphone,
+    V2007EQMode,
+    V2007HDMIAudioMode,
+    V2007HDMIChannel,
+    V2007IPConverter,
+    V2007MDAX,
+    V2007Menu,
+    V2007NightMode,
+    V2007Power,
+    V2007Source,
+    V2007StereoMode,
+    V2007THXSet,
+    V2007TriState,
+    V2007TunerMode,
+    V2007VolumeMode,
 )
 from .protocol import (
     encode_lip_sync,
@@ -32,17 +32,17 @@ from .protocol import (
     encode_volume,
     parse_volume,
 )
-from .state import LegacyMainState, LegacyMultiRoomState
+from .state import V2007MainState, V2007MultiRoomState
 
 if TYPE_CHECKING:
-    from .receiver import MarantzLegacyReceiver
+    from .receiver import MarantzV2007Receiver
 
 
-class LegacyMainPlayer:
+class V2007MainPlayer:
     """Stateful control surface for the main zone of a legacy Marantz receiver."""
 
     def __init__(
-        self, receiver: MarantzLegacyReceiver, state: LegacyMainState
+        self, receiver: MarantzV2007Receiver, state: V2007MainState
     ) -> None:
         self._receiver = receiver
         self._state = state
@@ -98,15 +98,15 @@ class LegacyMainPlayer:
         return self._state.speaker_b
 
     @property
-    def hdmi_channel(self) -> LegacyHDMIChannel | None:
+    def hdmi_channel(self) -> V2007HDMIChannel | None:
         return self._state.hdmi_channel
 
     @property
-    def hdmi_audio_mode(self) -> LegacyHDMIAudioMode | None:
+    def hdmi_audio_mode(self) -> V2007HDMIAudioMode | None:
         return self._state.hdmi_audio_mode
 
     @property
-    def ip_converter(self) -> LegacyIPConverter | None:
+    def ip_converter(self) -> V2007IPConverter | None:
         return self._state.ip_converter
 
     @property
@@ -118,15 +118,15 @@ class LegacyMainPlayer:
         return self._state.thx_mode
 
     @property
-    def eq_mode(self) -> LegacyEQMode | None:
+    def eq_mode(self) -> V2007EQMode | None:
         return self._state.eq_mode
 
     @property
-    def night_mode(self) -> LegacyNightMode | None:
+    def night_mode(self) -> V2007NightMode | None:
         return self._state.night_mode
 
     @property
-    def mdax(self) -> LegacyMDAX | None:
+    def mdax(self) -> V2007MDAX | None:
         return self._state.mdax
 
     @property
@@ -146,68 +146,68 @@ class LegacyMainPlayer:
         return self._state.tuner_preset
 
     @property
-    def tuner_mode(self) -> LegacyTunerMode | None:
+    def tuner_mode(self) -> V2007TunerMode | None:
         return self._state.tuner_mode
 
     # ----- Power -------------------------------------------------------------
 
     async def power_on(self) -> None:
-        await self._receiver._send_command("PWR", LegacyPower.ON.value)
+        await self._receiver._send_command("PWR", V2007Power.ON.value)
 
     async def power_off(self) -> None:
-        await self._receiver._send_command("PWR", LegacyPower.OFF.value)
+        await self._receiver._send_command("PWR", V2007Power.OFF.value)
 
     async def power_toggle(self) -> None:
-        await self._receiver._send_command("PWR", LegacyPower.TOGGLE.value)
+        await self._receiver._send_command("PWR", V2007Power.TOGGLE.value)
 
     async def global_power_off(self) -> None:
-        await self._receiver._send_command("PWR", LegacyPower.GLOBAL_OFF.value)
+        await self._receiver._send_command("PWR", V2007Power.GLOBAL_OFF.value)
 
     async def query_power(self) -> bool:
         resp = await self._receiver._query("PWR")
-        return resp == LegacyPower.ON.value
+        return resp == V2007Power.ON.value
 
     # ----- Mute --------------------------------------------------------------
 
     async def mute_on(self) -> None:
-        await self._receiver._send_command("AMT", LegacyTriState.ON.value)
+        await self._receiver._send_command("AMT", V2007TriState.ON.value)
 
     async def mute_off(self) -> None:
-        await self._receiver._send_command("AMT", LegacyTriState.OFF.value)
+        await self._receiver._send_command("AMT", V2007TriState.OFF.value)
 
     async def mute_toggle(self) -> None:
-        await self._receiver._send_command("AMT", LegacyTriState.TOGGLE.value)
+        await self._receiver._send_command("AMT", V2007TriState.TOGGLE.value)
 
     async def query_mute(self) -> bool:
         resp = await self._receiver._query("AMT")
-        return resp == LegacyTriState.ON.value
+        return resp == V2007TriState.ON.value
 
     async def video_mute_on(self) -> None:
-        await self._receiver._send_command("VMT", LegacyTriState.ON.value)
+        await self._receiver._send_command("VMT", V2007TriState.ON.value)
 
     async def video_mute_off(self) -> None:
-        await self._receiver._send_command("VMT", LegacyTriState.OFF.value)
+        await self._receiver._send_command("VMT", V2007TriState.OFF.value)
 
     async def video_mute_toggle(self) -> None:
-        await self._receiver._send_command("VMT", LegacyTriState.TOGGLE.value)
+        await self._receiver._send_command("VMT", V2007TriState.TOGGLE.value)
 
     async def attenuator_on(self) -> None:
-        await self._receiver._send_command("ATT", LegacyTriState.ON.value)
+        await self._receiver._send_command("ATT", V2007TriState.ON.value)
 
     async def attenuator_off(self) -> None:
-        await self._receiver._send_command("ATT", LegacyTriState.OFF.value)
+        await self._receiver._send_command("ATT", V2007TriState.OFF.value)
 
     async def attenuator_toggle(self) -> None:
-        await self._receiver._send_command("ATT", LegacyTriState.TOGGLE.value)
+        await self._receiver._send_command("ATT", V2007TriState.TOGGLE.value)
 
     async def seven_one_input_on(self) -> None:
-        await self._receiver._send_command("71C", LegacyTriState.ON.value)
+        await self._receiver._send_command("71C", V2007TriState.ON.value)
 
     async def seven_one_input_off(self) -> None:
-        await self._receiver._send_command("71C", LegacyTriState.OFF.value)
+        await self._receiver._send_command("71C", V2007TriState.OFF.value)
 
     async def seven_one_input_toggle(self) -> None:
-        await self._receiver._send_command("71C", LegacyTriState.TOGGLE.value)
+        await self._receiver._send_command("71C", V2007TriState.TOGGLE.value)
 
     # ----- Volume ------------------------------------------------------------
 
@@ -256,8 +256,8 @@ class LegacyMainPlayer:
 
     # ----- Source ------------------------------------------------------------
 
-    async def select_source(self, source: LegacySource | str) -> None:
-        code = source.value if isinstance(source, LegacySource) else source
+    async def select_source(self, source: V2007Source | str) -> None:
+        code = source.value if isinstance(source, V2007Source) else source
         await self._receiver._send_command("SRC", code)
 
     async def query_source(self) -> str:
@@ -280,16 +280,16 @@ class LegacyMainPlayer:
     async def speaker_b_on(self) -> None:
         await self._receiver._send_command("SPK", "4")
 
-    async def set_hdmi_channel(self, channel: LegacyHDMIChannel) -> None:
+    async def set_hdmi_channel(self, channel: V2007HDMIChannel) -> None:
         await self._receiver._send_command("HDM", channel.value)
 
-    async def set_hdmi_audio_mode(self, mode: LegacyHDMIAudioMode) -> None:
+    async def set_hdmi_audio_mode(self, mode: V2007HDMIAudioMode) -> None:
         await self._receiver._send_command("HAM", mode.value)
 
-    async def set_ip_converter(self, mode: LegacyIPConverter) -> None:
+    async def set_ip_converter(self, mode: V2007IPConverter) -> None:
         await self._receiver._send_command("IPC", mode.value)
 
-    async def set_component2(self, mode: LegacyComponent2) -> None:
+    async def set_component2(self, mode: V2007Component2) -> None:
         """Set component2 routing (SR8002 only)."""
         self._receiver._check_sr8002("Component2 select (CM2)")
         await self._receiver._send_command("CM2", mode.value)
@@ -297,7 +297,7 @@ class LegacyMainPlayer:
     # ----- Surround / processing --------------------------------------------
 
     async def set_surround_mode(self, code: str) -> None:
-        """Set surround mode by single-char code (see LegacySurroundCode)."""
+        """Set surround mode by single-char code (see V2007SurroundCode)."""
         await self._receiver._send_command("SUR", f"0{code}")
 
     async def surround_next(self) -> None:
@@ -309,25 +309,25 @@ class LegacyMainPlayer:
     async def query_surround_mode(self) -> str:
         return await self._receiver._query("SUR")
 
-    async def set_thx_mode(self, mode: LegacyTHXSet) -> None:
+    async def set_thx_mode(self, mode: V2007THXSet) -> None:
         await self._receiver._send_command("THX", mode.value)
 
     async def query_thx_mode(self) -> str:
         return await self._receiver._query("THX")
 
-    async def set_eq_mode(self, mode: LegacyEQMode) -> None:
+    async def set_eq_mode(self, mode: V2007EQMode) -> None:
         await self._receiver._send_command("EQM", mode.value)
 
-    async def set_dolby_headphone(self, mode: LegacyDolbyHeadphone) -> None:
+    async def set_dolby_headphone(self, mode: V2007DolbyHeadphone) -> None:
         await self._receiver._send_command("DHM", mode.value)
 
-    async def set_night_mode(self, mode: LegacyNightMode) -> None:
+    async def set_night_mode(self, mode: V2007NightMode) -> None:
         await self._receiver._send_command("NGT", mode.value)
 
     async def night_mode_toggle(self) -> None:
-        await self._receiver._send_command("NGT", LegacyNightMode.TOGGLE.value)
+        await self._receiver._send_command("NGT", V2007NightMode.TOGGLE.value)
 
-    async def set_mdax(self, mode: LegacyMDAX) -> None:
+    async def set_mdax(self, mode: V2007MDAX) -> None:
         await self._receiver._send_command("MDA", mode.value)
 
     async def set_lip_sync(self, ms: int) -> None:
@@ -360,28 +360,28 @@ class LegacyMainPlayer:
         await self._receiver._send_command("FKL", "1")
 
     async def menu_on(self) -> None:
-        await self._receiver._send_command("MNU", LegacyMenu.ON.value)
+        await self._receiver._send_command("MNU", V2007Menu.ON.value)
 
     async def menu_off(self) -> None:
-        await self._receiver._send_command("MNU", LegacyMenu.OFF.value)
+        await self._receiver._send_command("MNU", V2007Menu.OFF.value)
 
     async def menu_toggle(self) -> None:
-        await self._receiver._send_command("MNU", LegacyMenu.TOGGLE.value)
+        await self._receiver._send_command("MNU", V2007Menu.TOGGLE.value)
 
     async def menu_enter(self) -> None:
-        await self._receiver._send_command("MNU", LegacyMenu.ENTER.value)
+        await self._receiver._send_command("MNU", V2007Menu.ENTER.value)
 
     async def cursor_up(self) -> None:
-        await self._receiver._send_command("CUR", LegacyCursor.UP.value)
+        await self._receiver._send_command("CUR", V2007Cursor.UP.value)
 
     async def cursor_down(self) -> None:
-        await self._receiver._send_command("CUR", LegacyCursor.DOWN.value)
+        await self._receiver._send_command("CUR", V2007Cursor.DOWN.value)
 
     async def cursor_left(self) -> None:
-        await self._receiver._send_command("CUR", LegacyCursor.LEFT.value)
+        await self._receiver._send_command("CUR", V2007Cursor.LEFT.value)
 
     async def cursor_right(self) -> None:
-        await self._receiver._send_command("CUR", LegacyCursor.RIGHT.value)
+        await self._receiver._send_command("CUR", V2007Cursor.RIGHT.value)
 
     # ----- DC triggers ------------------------------------------------------
 
@@ -470,8 +470,8 @@ class LegacyMainPlayer:
     async def tuner_preset_scan_stop(self) -> None:
         await self._receiver._send_command("TPR", "4")
 
-    async def set_tuner_mode(self, mode: LegacyTunerMode) -> None:
-        if mode is LegacyTunerMode.DIGITAL_AUTO:
+    async def set_tuner_mode(self, mode: V2007TunerMode) -> None:
+        if mode is V2007TunerMode.DIGITAL_AUTO:
             self._receiver._check_sr8002("HD Radio digital-auto tuner mode (TMD:3)")
         await self._receiver._send_command("TMD", mode.value)
 
@@ -547,7 +547,7 @@ class LegacyMainPlayer:
         await self._receiver._send_command("AST", format(layer_mask, "X"))
 
 
-class LegacyMultiRoomPlayer:
+class V2007MultiRoomPlayer:
     """Stateful control surface for a Multi Room (A or B) zone.
 
     Multi Room A uses `:` separator; Multi Room B uses `=` (SR8002 only).
@@ -556,8 +556,8 @@ class LegacyMultiRoomPlayer:
 
     def __init__(
         self,
-        receiver: MarantzLegacyReceiver,
-        state: LegacyMultiRoomState,
+        receiver: MarantzV2007Receiver,
+        state: V2007MultiRoomState,
         *,
         separator: str,
     ) -> None:
@@ -592,11 +592,11 @@ class LegacyMultiRoomPlayer:
         return self._state.speaker_volume
 
     @property
-    def line_volume_mode(self) -> LegacyVolumeMode | None:
+    def line_volume_mode(self) -> V2007VolumeMode | None:
         return self._state.line_volume_mode
 
     @property
-    def speaker_volume_mode(self) -> LegacyVolumeMode | None:
+    def speaker_volume_mode(self) -> V2007VolumeMode | None:
         return self._state.speaker_volume_mode
 
     @property
@@ -608,7 +608,7 @@ class LegacyMultiRoomPlayer:
         return self._state.source_audio
 
     @property
-    def stereo_mode(self) -> LegacyStereoMode | None:
+    def stereo_mode(self) -> V2007StereoMode | None:
         return self._state.stereo_mode
 
     @property
@@ -625,31 +625,31 @@ class LegacyMultiRoomPlayer:
         await self._receiver._send_command(prefix, payload, separator=self._separator)
 
     async def power_on(self) -> None:
-        await self._send("MPW", LegacyTriState.ON.value)
+        await self._send("MPW", V2007TriState.ON.value)
 
     async def power_off(self) -> None:
-        await self._send("MPW", LegacyTriState.OFF.value)
+        await self._send("MPW", V2007TriState.OFF.value)
 
     async def power_toggle(self) -> None:
-        await self._send("MPW", LegacyTriState.TOGGLE.value)
+        await self._send("MPW", V2007TriState.TOGGLE.value)
 
     async def speaker_on_command(self) -> None:
-        await self._send("MSP", LegacyTriState.ON.value)
+        await self._send("MSP", V2007TriState.ON.value)
 
     async def speaker_off_command(self) -> None:
-        await self._send("MSP", LegacyTriState.OFF.value)
+        await self._send("MSP", V2007TriState.OFF.value)
 
     async def mute_on(self) -> None:
-        await self._send("MAM", LegacyTriState.ON.value)
+        await self._send("MAM", V2007TriState.ON.value)
 
     async def mute_off(self) -> None:
-        await self._send("MAM", LegacyTriState.OFF.value)
+        await self._send("MAM", V2007TriState.OFF.value)
 
     async def speaker_mute_on(self) -> None:
-        await self._send("MSM", LegacyTriState.ON.value)
+        await self._send("MSM", V2007TriState.ON.value)
 
     async def speaker_mute_off(self) -> None:
-        await self._send("MSM", LegacyTriState.OFF.value)
+        await self._send("MSM", V2007TriState.OFF.value)
 
     async def set_line_volume(self, db: float) -> None:
         await self._send("MVL", f"0{encode_volume(db)}")
@@ -669,14 +669,14 @@ class LegacyMultiRoomPlayer:
     async def speaker_volume_down(self) -> None:
         await self._send("MSV", "2")
 
-    async def set_line_volume_mode(self, mode: LegacyVolumeMode) -> None:
+    async def set_line_volume_mode(self, mode: V2007VolumeMode) -> None:
         await self._send("MVS", mode.value)
 
-    async def set_speaker_volume_mode(self, mode: LegacyVolumeMode) -> None:
+    async def set_speaker_volume_mode(self, mode: V2007VolumeMode) -> None:
         await self._send("MSS", mode.value)
 
-    async def select_source(self, source: LegacySource | str) -> None:
-        code = source.value if isinstance(source, LegacySource) else source
+    async def select_source(self, source: V2007Source | str) -> None:
+        code = source.value if isinstance(source, V2007Source) else source
         await self._send("MSC", code)
 
     async def set_sleep(self, minutes: int) -> None:
@@ -688,12 +688,12 @@ class LegacyMultiRoomPlayer:
         await self._send("MSL", "1")
 
     async def osd_on(self) -> None:
-        await self._send("MOS", LegacyTriState.ON.value)
+        await self._send("MOS", V2007TriState.ON.value)
 
     async def osd_off(self) -> None:
-        await self._send("MOS", LegacyTriState.OFF.value)
+        await self._send("MOS", V2007TriState.OFF.value)
 
-    async def set_stereo_mode(self, mode: LegacyStereoMode) -> None:
+    async def set_stereo_mode(self, mode: V2007StereoMode) -> None:
         await self._send("MST", mode.value)
 
     # Tuner forwarding (Multi Room can drive its own tuner output).
@@ -715,5 +715,5 @@ class LegacyMultiRoomPlayer:
             raise ValueError("Tuner preset must be 1..99")
         await self._send("MTP", f"0{preset:02d}")
 
-    async def set_tuner_mode(self, mode: LegacyTunerMode) -> None:
+    async def set_tuner_mode(self, mode: V2007TunerMode) -> None:
         await self._send("MTM", mode.value)
