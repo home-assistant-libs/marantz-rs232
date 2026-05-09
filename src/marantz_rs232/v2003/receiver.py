@@ -141,8 +141,8 @@ class MarantzV2003Receiver:
         self._subscribers: list[V2003StateCallback] = []
         self._connected = False
 
-        self.main = V2003MainPlayer(self)
-        self.multi_room = V2003MultiRoomPlayer(self)
+        self.main = V2003MainPlayer(self, self._state.main)
+        self.multi_room = V2003MultiRoomPlayer(self, self._state.multi_room)
 
     # -- Connection lifecycle --
 

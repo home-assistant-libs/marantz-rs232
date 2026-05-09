@@ -11,6 +11,7 @@ from .const import (
     V2003SurroundMode,
 )
 from .protocol import encode_main_source, encode_multi_source, encode_volume
+from .state import V2003MainState, V2003MultiRoomState
 
 if TYPE_CHECKING:
     from .receiver import MarantzV2003Receiver
@@ -19,8 +20,32 @@ if TYPE_CHECKING:
 class V2003MainPlayer:
     """Commands targeting the main listening room."""
 
-    def __init__(self, receiver: MarantzV2003Receiver) -> None:
+    def __init__(
+        self, receiver: MarantzV2003Receiver, state: V2003MainState
+    ) -> None:
         self._receiver = receiver
+        self._state = state
+
+    # -- Properties --
+    @property
+    def power(self) -> bool | None:
+        return self._state.power
+
+    @property
+    def volume(self) -> float | None:
+        return self._state.volume
+
+    @property
+    def mute(self) -> bool | None:
+        return self._state.mute
+
+    @property
+    def audio_input(self) -> V2003Source | None:
+        return self._state.audio_input
+
+    @property
+    def video_input(self) -> V2003Source | None:
+        return self._state.video_input
 
     # -- Power --
     async def power_on(self) -> None:
@@ -195,8 +220,32 @@ class V2003MainPlayer:
 class V2003MultiRoomPlayer:
     """Commands targeting the multi-room (zone 2) output."""
 
-    def __init__(self, receiver: MarantzV2003Receiver) -> None:
+    def __init__(
+        self, receiver: MarantzV2003Receiver, state: V2003MultiRoomState
+    ) -> None:
         self._receiver = receiver
+        self._state = state
+
+    # -- Properties --
+    @property
+    def enabled(self) -> bool | None:
+        return self._state.enabled
+
+    @property
+    def volume(self) -> float | None:
+        return self._state.volume
+
+    @property
+    def mute(self) -> bool | None:
+        return self._state.mute
+
+    @property
+    def audio_input(self) -> V2003Source | None:
+        return self._state.audio_input
+
+    @property
+    def video_input(self) -> V2003Source | None:
+        return self._state.video_input
 
     # -- Power / state --
     async def on(self) -> None:
