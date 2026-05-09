@@ -2,9 +2,11 @@
 
 Async Python library to control Marantz AV receivers over RS232 serial. Supports three distinct Marantz protocols side by side, named after the year of their reference spec PDF:
 
-- **v2015** (`MarantzV2015Receiver`) — 2015 lineup using `PREFIX+VALUE\r` framing at 9600 baud.
-- **v2007** (`MarantzV2007Receiver`) — 2007–2010 lineup (SR7002/SR8002-era) using `@CMD:VALUE\r` framing at 9600 baud.
+- **v2015** (`MarantzV2015Receiver`) — 2015-era lineup (NR1504..NR1606, SR5006..SR7010, AV7005..AV8802A) using `PREFIX+VALUE\r` framing at 9600 baud.
+- **v2007** (`MarantzV2007Receiver`) — Marantz lineup using `@CMD:VALUE\r` framing at 9600 baud (AV8003, SR9600/SR9600A, SR8002/SR7002, SR8001/SR7001, SR8500/SR7500, SR6004/SR5004, SR6003/SR5003, SR5002, SR6001/SR5001, SR5500/SR5600, ZR6001, SR4023).
 - **v2003** (`MarantzV2003Receiver`) — 2003-era SR9300/SR8300 using `@<ID><CODE>\r` positional framing at 4800 baud with RTS/CTS hardware flow control.
+
+Each protocol exposes a `V20xxModel` enum and a `V20xx_SUPPORTED_SOURCES` (or `_SUPPORTED_INPUTS`) map so callers can determine which inputs a specific model accepts. The v2007 protocol additionally exposes feature-set frozensets (`V2007_HD_RADIO_MODELS`, `V2007_MULTI_ROOM_B_MODELS`, `V2007_TUNER2_MODELS`, `V2007_COMPONENT2_MODELS`) used by `MarantzV2007Receiver._check_models()` to warn (once per feature) when a command isn't documented for the configured model.
 
 All public symbols are prefixed with `V2003`, `V2007`, or `V2015` to keep the three side-by-side namespaces clean.
 
@@ -74,13 +76,13 @@ docs/
 
 ## Architecture (v2007 receiver)
 
-- Same baud (9600 8N1), different framing: `@<CMD>:<VALUE>\r`. Reference: `docs/Marantz 2007 SR7002 SR8002 RS232C Control Specification v1.00.pdf`.
-- Three separators in play, dispatched by the same parser/receiver: `:` (main + Multi Room A), `=` (Multi Room B, SR8002 only), `*` (HD Radio metadata, SR8002 only).
+- Same baud (9600 8N1), different framing: `@<CMD>:<VALUE>\r`. Reference: `docs/Marantz 2007 SR7002 SR8002 RS232C Control Specification v1.00.pdf` for SR7002/SR8002, plus `docs/Marantz_RS232C_Command_List-Receiver_All.xls` for the full per-model matrix.
+- Four separators in play, dispatched by the same parser/receiver: `:` (main + Multi Room A), `=` (Multi Room B; SR8002 + SR9600/SR9600A), `*` (HD Radio metadata on AV8003/SR8002/SR7002 *and* TUNER2 status on SR9600/SR9600A — the prefix family disambiguates), `#` (Multi-Zone B TUNER2 on SR9600/SR9600A).
 - ACK / NAK responses (`@\x06\r` / `@\x15\r`) are recognised and ignored by the read loop; status lines have shape `@CMD<sep>VALUE\r`.
 - Auto-status feedback is **opt-in** on this protocol — `connect()` enables all four layers via `@AST:F\r` so subscribers see spontaneous state changes the same way they do on v2015 receivers.
 - Set/status asymmetry: the SUR command takes `@SUR:00` to set AUTO but the receiver reports back `SUR:0`. Players add the `0` prefix on send; the parser strips it on receive.
 - The HAL query intentionally returns under a different prefix (`ALS`); `_query(response_prefix="ALS")` handles the asymmetry.
-- `V2007Model.SR8002` gates Multi Room B, HD Radio metadata, Component2, HD tuner extensions. Calling those methods on a non-SR8002 model logs a warning once per feature and proceeds.
+- Per-feature gating uses `MarantzV2007Receiver._check_models(feature, allowed_models)`: `V2007_HD_RADIO_MODELS` ({AV8003, SR8002, SR7002}), `V2007_MULTI_ROOM_B_MODELS` ({SR8002, SR9600, SR9600A}), `V2007_TUNER2_MODELS` ({SR9600, SR9600A}), `V2007_COMPONENT2_MODELS` ({SR8002}). Calling a gated method on a non-allowed model logs a warning once per feature and proceeds.
 - The two receiver classes deliberately don't share inheritance — the state schemas and command sets diverge enough that a strategy-pattern unification would add complexity without value. Some duplication (subscribers, connection lifecycle) is accepted.
 
 ## Key design decisions
@@ -101,7 +103,7 @@ docs/
 - v2015 tests use `MockSerialConnection` (`tests/conftest.py`) with `DEFAULT_QUERY_RESPONSES` keyed by 2-char prefix.
 - v2007 tests use `_MockSerial` (in `tests/test_v2007.py`) with `_DEFAULT_V2007_RESPONSES` keyed by 3-char prefix and `@CMD:VALUE` parsing in `_on_write`.
 - v2003 tests use `_MockV2003Serial` (in `tests/test_v2003.py`) with `_DEFAULT_V2003_RESPONSES` keyed by single request character; the mock auto-replies with `\x06` (ACK) for commands.
-- Run: `uv run pytest` or `python -m pytest tests/`. ~469 tests total.
+- Run: `uv run pytest` or `python -m pytest tests/`. ~500 tests total.
 
 ## Enums
 

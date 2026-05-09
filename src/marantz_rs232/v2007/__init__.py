@@ -1,7 +1,11 @@
 """v2007 (SR7002-era) Marantz RS-232 protocol support.
 
-Targets the 2007-2010 Marantz lineup that uses the `@CMD:VALUE\\r` framing:
-SR7002, SR8002, SR6003, SR7003, SR8003, SR5004, SR6004, AV7005, AV8003.
+Targets the Marantz lineup that uses the `@CMD:VALUE\\r` framing. Per
+``docs/Marantz_RS232C_Command_List-Receiver_All.xls`` this covers AV8003,
+SR9600/SR9600A, SR8002/SR7002, SR8001/SR7001, SR8500/SR7500, SR6004/SR5004,
+SR6003/SR5003, SR5002, SR6001/SR5001, SR5500/SR5600, ZR6001, and SR4023.
+See :class:`V2007Model` for the canonical list and
+:data:`V2007_SUPPORTED_SOURCES` for per-model input gating.
 
 Distinct from the 2015 protocol (NR1506/SR5010/etc) implemented at the package
 top level. Reference: docs/Marantz 2007 SR7002 SR8002 RS232C Control Specification v1.00.pdf
@@ -10,9 +14,14 @@ top level. Reference: docs/Marantz 2007 SR7002 SR8002 RS232C Control Specificati
 from .const import (
     V2007_BAUD_RATE,
     V2007_COMMAND_TIMEOUT,
+    V2007_COMPONENT2_MODELS,
+    V2007_HD_RADIO_MODELS,
+    V2007_MULTI_ROOM_B_MODELS,
     V2007_SOURCE_NAMES,
+    V2007_SUPPORTED_SOURCES,
     V2007_SURROUND_NAMES,
     V2007_THX_STATUS_NAMES,
+    V2007_TUNER2_MODELS,
     V2007Component2,
     V2007Cursor,
     V2007DolbyHeadphone,
@@ -76,8 +85,13 @@ __all__ = [
     "V2007TunerMode",
     "V2007VolumeMode",
     "MarantzV2007Receiver",
+    "V2007_COMPONENT2_MODELS",
+    "V2007_HD_RADIO_MODELS",
+    "V2007_MULTI_ROOM_B_MODELS",
     "V2007_SOURCE_NAMES",
+    "V2007_SUPPORTED_SOURCES",
     "V2007_SURROUND_NAMES",
+    "V2007_TUNER2_MODELS",
     "V2007StateCallback",
     "V2007_THX_STATUS_NAMES",
     "V2007TunerBand",

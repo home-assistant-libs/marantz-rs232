@@ -730,3 +730,14 @@ async def test_probe_detects_v2003() -> None:
     # Phase 2 must use 4800 + RTS/CTS.
     _, phase2_kwargs = open_call.call_args_list[1]
     assert phase2_kwargs == {"baudrate": 4800, "rtscts": True}
+
+
+# -- Per-model source map -------------------------------------------------
+
+
+def test_v2003_supported_sources_covers_all_models() -> None:
+    from marantz_rs232 import V2003_SUPPORTED_SOURCES, V2003Model, V2003Source
+
+    for model in V2003Model:
+        assert model in V2003_SUPPORTED_SOURCES, model
+        assert V2003_SUPPORTED_SOURCES[model] == frozenset(V2003Source)

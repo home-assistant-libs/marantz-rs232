@@ -45,6 +45,20 @@ POWER_STATUS_CODES: dict[str, bool] = {
 }
 
 
+class V2003Model(Enum):
+    """Marantz model in the v2003 protocol family.
+
+    The reference spec (docs/Marantz 2003 SR9300 SR8300 RS232C Control
+    Specification v2.00.pdf) covers SR9300 and SR8300 as one family with
+    identical command/source coverage; ``V2003_SUPPORTED_SOURCES`` lists
+    them with the same set.
+    """
+
+    GENERIC = "generic"
+    SR9300 = "SR9300"
+    SR8300 = "SR8300"
+
+
 class V2003Source(Enum):
     """Logical input source. The enum value is the *set-command position* —
     the second character of a B-prefix command (``B3`` for DVD, ``BG`` for
@@ -93,6 +107,16 @@ AUDIO_ONLY_SOURCES = frozenset(
         V2003Source.TUNER,
     }
 )
+
+
+# SR9300 and SR8300 share the documented source set verbatim — present here
+# for parity with the v2007/v2015 per-model maps.
+_V2003_ALL_SOURCES = frozenset(V2003Source)
+V2003_SUPPORTED_SOURCES: dict[V2003Model, frozenset[V2003Source]] = {
+    V2003Model.GENERIC: _V2003_ALL_SOURCES,
+    V2003Model.SR9300: _V2003_ALL_SOURCES,
+    V2003Model.SR8300: _V2003_ALL_SOURCES,
+}
 
 
 class V2003InputMode(Enum):

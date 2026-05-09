@@ -9,7 +9,12 @@ V2007_PREFIX = "@"
 V2007_SEPARATOR = ":"
 V2007_TERMINATOR = b"\r"
 V2007_MULTI_ROOM_B_SEPARATOR = "="  # SR8002 Multi Room B substitutes `=` for `:`
-V2007_HD_RADIO_SEPARATOR = "*"  # SR8002 HD Radio metadata uses `*` separator
+# `*` carries two unrelated payload kinds: HD Radio metadata responses (AV8003,
+# SR8002, SR7002) and TUNER2 commands/responses (SR9600, SR9600A).
+V2007_HD_RADIO_SEPARATOR = "*"
+V2007_TUNER2_SEPARATOR = "*"
+# `#` is Multi-Zone B + TUNER2 — SR9600/SR9600A only.
+V2007_MR_B_TUNER2_SEPARATOR = "#"
 
 # Single-byte ACK / NAK responses framed as `@\x06\r` / `@\x15\r`.
 ACK_BYTE = "\x06"
@@ -19,14 +24,56 @@ NAK_BYTE = "\x15"
 class V2007Model(Enum):
     """Specific Marantz model in the v2007 protocol family.
 
-    GENERIC: assume the documented baseline shared by all listed models.
-    SR7002:  baseline; no HD Radio, no Multi Room B, no Component2.
-    SR8002:  baseline + HD Radio + Multi Room B + Component2 select.
+    Models are grouped by feature set; see :data:`V2007_SUPPORTED_SOURCES`,
+    :data:`V2007_HD_RADIO_MODELS`, :data:`V2007_MULTI_ROOM_B_MODELS`,
+    :data:`V2007_TUNER2_MODELS`, and :data:`V2007_COMPONENT2_MODELS` for the
+    per-feature model sets.
+
+    GENERIC is a safe baseline assuming nothing model-specific.
     """
 
     GENERIC = "generic"
-    SR7002 = "SR7002"
+    AV8003 = "AV8003"
+    SR9600 = "SR9600"
+    SR9600A = "SR9600A"
     SR8002 = "SR8002"
+    SR7002 = "SR7002"
+    SR8001 = "SR8001"
+    SR7001 = "SR7001"
+    SR8500 = "SR8500"
+    SR7500 = "SR7500"
+    SR6004 = "SR6004"
+    SR5004 = "SR5004"
+    SR6003 = "SR6003"
+    SR5003 = "SR5003"
+    SR5002 = "SR5002"
+    SR6001 = "SR6001"
+    SR5001 = "SR5001"
+    SR5500 = "SR5500"
+    SR5600 = "SR5600"
+    ZR6001 = "ZR6001"
+    SR4023 = "SR4023"
+
+
+# Models that respond to HD Radio metadata queries (`@CHN*`, `@ARN*`, `@SON*`,
+# `@CTN*`, `@SST*`). Source: docs/Marantz_RS232C_Command_List-Receiver_All.xls.
+V2007_HD_RADIO_MODELS: frozenset[V2007Model] = frozenset(
+    {V2007Model.AV8003, V2007Model.SR8002, V2007Model.SR7002}
+)
+
+# Models that support Multi Room B (`=` separator).
+V2007_MULTI_ROOM_B_MODELS: frozenset[V2007Model] = frozenset(
+    {V2007Model.SR8002, V2007Model.SR9600, V2007Model.SR9600A}
+)
+
+# Models with a second tuner — TUNER2 commands use the `*` separator and the
+# `#` separator routes to Multi-Zone B TUNER2.
+V2007_TUNER2_MODELS: frozenset[V2007Model] = frozenset(
+    {V2007Model.SR9600, V2007Model.SR9600A}
+)
+
+# Models that accept the Component2 video select (`@CM2:` ).
+V2007_COMPONENT2_MODELS: frozenset[V2007Model] = frozenset({V2007Model.SR8002})
 
 
 class V2007TriState(Enum):
@@ -51,29 +98,165 @@ class V2007Power(Enum):
 
 
 class V2007Source(Enum):
-    """Documented source codes for SR7002/SR8002.
+    """Wire-code source IDs for the v2007 protocol.
 
     The wire format is a single character. `@SRC:?` queries return TWO
     characters (video then audio) — see `V2007MainState.source_video` and
     `source_audio`. Setting via `@SRC:<code>` switches both video and audio
     to the same input.
+
+    Names use the most common label for each code; some receivers expose the
+    same code under a different name (e.g. ``J`` is "XM" on most receivers
+    but "TUNER2" on SR9600, ``K`` is "SIRIUS" or "FM2", ``L`` is "AM2" or
+    "PHONO"). Use :data:`V2007_SUPPORTED_SOURCES` to check which codes a
+    given model actually accepts.
     """
 
     TV = "1"
     DVD = "2"
     VCR1 = "3"
+    VCR2 = "4"
     DSS_VCR2 = "5"
+    LD = "6"
+    USB = "7"
+    NETWORK = "8"
     AUX1 = "9"
     AUX2 = "A"
+    SR4023_CD = "B"
     CD_CDR = "C"
+    CD_R = "D"
     TAPE = "E"
     TUNER1 = "F"
     FM1 = "G"
     AM1 = "H"
     XM1 = "J"
+    SIRIUS = "K"
+    AM2 = "L"
+    BD = "M"
+    MXPORT = "N"
 
 
 V2007_SOURCE_NAMES: dict[str, str] = {member.value: member.name for member in V2007Source}
+
+
+# Per-model source support — wire codes that each model accepts on `@SRC:`.
+# Source: docs/Marantz_RS232C_Command_List-Receiver_All.xls.
+V2007_SUPPORTED_SOURCES: dict[V2007Model, frozenset[V2007Source]] = {
+    V2007Model.AV8003: frozenset(
+        {
+            V2007Source.TV, V2007Source.DVD, V2007Source.VCR1, V2007Source.VCR2,
+            V2007Source.DSS_VCR2, V2007Source.NETWORK, V2007Source.AUX1,
+            V2007Source.CD_CDR, V2007Source.TAPE, V2007Source.TUNER1,
+            V2007Source.FM1, V2007Source.AM1, V2007Source.XM1, V2007Source.SIRIUS,
+        }
+    ),
+    V2007Model.SR9600A: frozenset(
+        {
+            V2007Source.TV, V2007Source.DVD, V2007Source.VCR1, V2007Source.VCR2,
+            V2007Source.DSS_VCR2, V2007Source.LD, V2007Source.AUX1, V2007Source.AUX2,
+            V2007Source.CD_CDR, V2007Source.CD_R, V2007Source.TAPE,
+            V2007Source.TUNER1, V2007Source.FM1, V2007Source.AM1, V2007Source.XM1,
+        }
+    ),
+    V2007Model.SR9600: frozenset(
+        {
+            V2007Source.TV, V2007Source.DVD, V2007Source.VCR1, V2007Source.VCR2,
+            V2007Source.DSS_VCR2, V2007Source.LD, V2007Source.AUX1, V2007Source.AUX2,
+            V2007Source.CD_CDR, V2007Source.CD_R, V2007Source.TAPE,
+            V2007Source.TUNER1, V2007Source.FM1, V2007Source.AM1,
+            V2007Source.XM1,  # labelled TUNER2 on this model
+            V2007Source.SIRIUS,  # labelled FM2 on this model
+            V2007Source.AM2,
+        }
+    ),
+}
+# SR8002/SR7002 share a column in the spec; same set applies to SR8001/SR7001.
+_SR_8000_SOURCES = frozenset(
+    {
+        V2007Source.TV, V2007Source.DVD, V2007Source.VCR1, V2007Source.DSS_VCR2,
+        V2007Source.AUX1, V2007Source.AUX2, V2007Source.CD_CDR, V2007Source.TAPE,
+        V2007Source.TUNER1, V2007Source.FM1, V2007Source.AM1, V2007Source.XM1,
+    }
+)
+V2007_SUPPORTED_SOURCES[V2007Model.SR8002] = _SR_8000_SOURCES
+V2007_SUPPORTED_SOURCES[V2007Model.SR7002] = _SR_8000_SOURCES
+V2007_SUPPORTED_SOURCES[V2007Model.SR8001] = _SR_8000_SOURCES
+V2007_SUPPORTED_SOURCES[V2007Model.SR7001] = _SR_8000_SOURCES
+
+# SR8500/SR7500 — adds CD-R, drops XM.
+_SR_8500_SOURCES = frozenset(
+    {
+        V2007Source.TV, V2007Source.DVD, V2007Source.VCR1, V2007Source.DSS_VCR2,
+        V2007Source.AUX1, V2007Source.AUX2, V2007Source.CD_CDR, V2007Source.CD_R,
+        V2007Source.TAPE, V2007Source.TUNER1, V2007Source.FM1, V2007Source.AM1,
+    }
+)
+V2007_SUPPORTED_SOURCES[V2007Model.SR8500] = _SR_8500_SOURCES
+V2007_SUPPORTED_SOURCES[V2007Model.SR7500] = _SR_8500_SOURCES
+
+# SR6004/SR5004 — USB, BD, M-XPort, no AUX2 / TAPE.
+_SR_6004_SOURCES = frozenset(
+    {
+        V2007Source.TV, V2007Source.DVD, V2007Source.VCR1, V2007Source.VCR2,
+        V2007Source.DSS_VCR2, V2007Source.USB, V2007Source.AUX1,
+        V2007Source.CD_CDR, V2007Source.TUNER1, V2007Source.FM1, V2007Source.AM1,
+        V2007Source.XM1, V2007Source.SIRIUS, V2007Source.BD, V2007Source.MXPORT,
+    }
+)
+V2007_SUPPORTED_SOURCES[V2007Model.SR6004] = _SR_6004_SOURCES
+V2007_SUPPORTED_SOURCES[V2007Model.SR5004] = _SR_6004_SOURCES
+
+# SR6003/SR5003 — uses code 8 as USB.
+_SR_6003_SOURCES = frozenset(
+    {
+        V2007Source.TV, V2007Source.DVD, V2007Source.VCR1, V2007Source.DSS_VCR2,
+        V2007Source.NETWORK, V2007Source.AUX1, V2007Source.AUX2,
+        V2007Source.CD_CDR, V2007Source.TAPE, V2007Source.TUNER1,
+        V2007Source.FM1, V2007Source.AM1, V2007Source.XM1, V2007Source.SIRIUS,
+    }
+)
+V2007_SUPPORTED_SOURCES[V2007Model.SR6003] = _SR_6003_SOURCES
+V2007_SUPPORTED_SOURCES[V2007Model.SR5003] = _SR_6003_SOURCES
+
+# SR5002 / SR6001 / SR5001
+_SR_5002_SOURCES = frozenset(
+    {
+        V2007Source.TV, V2007Source.DVD, V2007Source.VCR1, V2007Source.DSS_VCR2,
+        V2007Source.AUX1, V2007Source.AUX2, V2007Source.CD_CDR, V2007Source.CD_R,
+        V2007Source.TAPE, V2007Source.TUNER1, V2007Source.FM1, V2007Source.AM1,
+        V2007Source.XM1,
+    }
+)
+V2007_SUPPORTED_SOURCES[V2007Model.SR5002] = _SR_5002_SOURCES
+V2007_SUPPORTED_SOURCES[V2007Model.SR6001] = _SR_5002_SOURCES
+V2007_SUPPORTED_SOURCES[V2007Model.SR5001] = _SR_5002_SOURCES
+
+# SR5500/SR5600/ZR6001 — code 4 means DSS on these.
+_SR_5500_SOURCES = frozenset(
+    {
+        V2007Source.TV, V2007Source.DVD, V2007Source.VCR1,
+        V2007Source.VCR2,  # labelled DSS on this model
+        V2007Source.AUX1, V2007Source.AUX2, V2007Source.CD_CDR, V2007Source.CD_R,
+        V2007Source.TAPE, V2007Source.TUNER1, V2007Source.FM1, V2007Source.AM1,
+    }
+)
+V2007_SUPPORTED_SOURCES[V2007Model.SR5500] = _SR_5500_SOURCES
+V2007_SUPPORTED_SOURCES[V2007Model.SR5600] = _SR_5500_SOURCES
+V2007_SUPPORTED_SOURCES[V2007Model.ZR6001] = _SR_5500_SOURCES
+
+# SR4023 — distinct CD slot (B) and PHONO at L.
+V2007_SUPPORTED_SOURCES[V2007Model.SR4023] = frozenset(
+    {
+        V2007Source.DVD, V2007Source.VCR1, V2007Source.DSS_VCR2,
+        V2007Source.AUX1, V2007Source.SR4023_CD, V2007Source.CD_CDR,
+        V2007Source.TAPE, V2007Source.TUNER1, V2007Source.FM1, V2007Source.AM1,
+        V2007Source.AM2,  # labelled PHONO on this model
+    }
+)
+
+# GENERIC accepts the union of all known codes — let user code send anything
+# the receiver accepts.
+V2007_SUPPORTED_SOURCES[V2007Model.GENERIC] = frozenset(V2007Source)
 
 
 class V2007SurroundCode(Enum):

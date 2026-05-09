@@ -880,7 +880,7 @@ async def test_sr8002_only_command_warns_on_sr7002(
     # The command is still sent (graceful fallback) ...
     assert b"@CM2:1\r" in mock_serial.written
     # ... but a warning was logged.
-    assert any("SR8002-only" in rec.message for rec in caplog.records)
+    assert any("not supported on" in rec.message for rec in caplog.records)
 
 
 async def test_sr8002_only_command_silent_on_sr8002_model(
@@ -908,7 +908,7 @@ async def test_sr8002_only_command_silent_on_sr8002_model(
             await recv.main.set_component2(V2007Component2.MAIN)
             assert b"@CM2:1\r" in mock_serial.written
             assert not any(
-                "SR8002-only" in rec.message for rec in caplog.records
+                "not supported on" in rec.message for rec in caplog.records
             )
         finally:
             await recv.disconnect()
@@ -986,3 +986,68 @@ async def test_non_hd_tuner_mode_does_not_warn(
     await receiver.main.set_tuner_mode(V2007TunerMode.MONO)
 
     assert not any("SR8002" in rec.message for rec in caplog.records)
+
+
+# -- Per-model source map -------------------------------------------------
+
+
+def test_supported_sources_covers_all_models() -> None:
+    """Every V2007Model value has an entry in V2007_SUPPORTED_SOURCES."""
+    from marantz_rs232 import V2007_SUPPORTED_SOURCES, V2007Model, V2007Source
+
+    for model in V2007Model:
+        assert model in V2007_SUPPORTED_SOURCES, model
+        sources = V2007_SUPPORTED_SOURCES[model]
+        assert isinstance(sources, frozenset)
+        assert all(isinstance(s, V2007Source) for s in sources)
+
+
+def test_sr4023_uses_dedicated_cd_code() -> None:
+    """SR4023 has a CD-only entry on wire code B that other models don't."""
+    from marantz_rs232 import V2007_SUPPORTED_SOURCES, V2007Model, V2007Source
+
+    assert V2007Source.SR4023_CD in V2007_SUPPORTED_SOURCES[V2007Model.SR4023]
+    assert V2007Source.SR4023_CD not in V2007_SUPPORTED_SOURCES[V2007Model.SR8002]
+
+
+def test_sr9600_supports_second_tuner_codes() -> None:
+    """SR9600 exposes wire codes K (FM2) and L (AM2) that most models don't."""
+    from marantz_rs232 import V2007_SUPPORTED_SOURCES, V2007Model, V2007Source
+
+    sr9600 = V2007_SUPPORTED_SOURCES[V2007Model.SR9600]
+    assert V2007Source.SIRIUS in sr9600  # labelled FM2 on this model
+    assert V2007Source.AM2 in sr9600
+
+
+# -- TUNER2 / # separator -------------------------------------------------
+
+
+async def test_hash_separator_query_warns_on_non_tuner2_model(
+    receiver: MarantzV2007Receiver, caplog
+) -> None:
+    """`#` separator is reserved for SR9600/SR9600A; warn elsewhere."""
+    import logging
+
+    caplog.set_level(logging.WARNING)
+
+    try:
+        await receiver._query("MTF", separator="#")
+    except TimeoutError:
+        pass
+
+    assert any(
+        "Multi-Zone B TUNER2" in rec.message for rec in caplog.records
+    )
+
+
+async def test_hash_and_star_dispatch_does_not_log_unhandled(
+    receiver: MarantzV2007Receiver, caplog
+) -> None:
+    """Receiving TUNER2 status on `*` or `#` should be silently absorbed."""
+    import logging
+
+    caplog.set_level(logging.WARNING)
+    receiver._process_line("@TFQ*08750")  # TUNER2 frequency
+    receiver._process_line("@MTF#08750")  # Multi-Zone B TUNER2 frequency
+
+    assert not any("Unhandled" in rec.message for rec in caplog.records)

@@ -11,7 +11,11 @@ import serialx
 from .const import (
     V2007_BAUD_RATE,
     V2007_COMMAND_TIMEOUT,
+    V2007_COMPONENT2_MODELS,
+    V2007_HD_RADIO_MODELS,
+    V2007_MULTI_ROOM_B_MODELS,
     V2007_TERMINATOR,
+    V2007_TUNER2_MODELS,
     V2007DolbyHeadphone,
     V2007EQMode,
     V2007HDMIAudioMode,
@@ -121,6 +125,9 @@ _MR_B_QUERY_PREFIXES = _MR_A_QUERY_PREFIXES
 # delivered with the `:` separator.
 _MULTI_ROOM_PREFIXES = frozenset(_MR_A_QUERY_PREFIXES + ("MMC",))
 
+# Prefixes that, with `*` separator, carry HD Radio metadata (vs TUNER2 status).
+_HD_RADIO_PREFIXES = frozenset({"CHN", "ARN", "SON", "CTN", "SST", "SS1", "SS2"})
+
 
 # ----- Two-character tri-state mapping helpers ------------------------------
 
@@ -161,22 +168,23 @@ class MarantzV2007Receiver:
         self._pending_queries: list[PendingQuery] = []
         self._write_lock = asyncio.Lock()
         self._connected = False
-        # Track which SR8002-only features we've already warned about so we
-        # don't spam the log on every call.
-        self._warned_sr8002_features: set[str] = set()
+        # One-shot dedupe so model-gated features warn once instead of per call.
+        self._warned_features: set[str] = set()
 
-    def _check_sr8002(self, feature: str) -> None:
-        """Warn (once per feature) if the current model isn't SR8002."""
-        if self._model is V2007Model.SR8002:
+    def _check_models(
+        self, feature: str, allowed: frozenset[V2007Model]
+    ) -> None:
+        if self._model in allowed:
             return
-        if feature in self._warned_sr8002_features:
+        if feature in self._warned_features:
             return
-        self._warned_sr8002_features.add(feature)
+        self._warned_features.add(feature)
         _LOGGER.warning(
-            "%s is an SR8002-only feature; current model is %s. "
+            "%s is not supported on %s (allowed: %s). "
             "The receiver will likely ignore this command.",
             feature,
             self._model.value,
+            ", ".join(sorted(m.value for m in allowed)),
         )
 
     @property
@@ -249,8 +257,8 @@ class MarantzV2007Receiver:
                 _LOGGER.debug("MR-A query timed out for %s", prefix)
 
     async def query_multi_room_b(self) -> None:
-        """Query Multi Room B (`=` separator) state. SR8002 only."""
-        self._check_sr8002("Multi Room B")
+        """Query Multi Room B (`=` separator) state."""
+        self._check_models("Multi Room B", V2007_MULTI_ROOM_B_MODELS)
         for prefix in _MR_B_QUERY_PREFIXES:
             try:
                 await self._query(prefix, separator="=")
@@ -258,8 +266,8 @@ class MarantzV2007Receiver:
                 _LOGGER.debug("MR-B query timed out for %s", prefix)
 
     async def query_hd_radio_metadata(self) -> None:
-        """Query HD Radio metadata (`*` separator). SR8002 only."""
-        self._check_sr8002("HD Radio metadata")
+        """Query HD Radio metadata (`*` separator)."""
+        self._check_models("HD Radio metadata", V2007_HD_RADIO_MODELS)
         for prefix in ("CHN", "ARN", "SON", "CTN"):
             try:
                 await self._query(prefix, separator="*")
@@ -271,7 +279,7 @@ class MarantzV2007Receiver:
     ) -> None:
         assert self._writer is not None
         if separator == "=":
-            self._check_sr8002("Multi Room B (`=` separator)")
+            self._check_models("Multi Room B (`=` separator)", V2007_MULTI_ROOM_B_MODELS)
             msg = encode_set_command_b(prefix, payload)
         else:
             msg = encode_set_command(prefix, payload)
@@ -306,11 +314,21 @@ class MarantzV2007Receiver:
 
         try:
             if separator == "=":
-                self._check_sr8002("Multi Room B (`=` separator)")
+                self._check_models(
+                    "Multi Room B (`=` separator)", V2007_MULTI_ROOM_B_MODELS
+                )
                 msg = encode_query_b(prefix)
             elif separator == "*":
-                self._check_sr8002("HD Radio metadata (`*` separator)")
+                # `*` carries HD Radio metadata on AV8003/SR8002/SR7002 and
+                # TUNER2 status on SR9600/SR9600A — both are valid uses.
+                allowed = V2007_HD_RADIO_MODELS | V2007_TUNER2_MODELS
+                self._check_models("`*` separator query", allowed)
                 msg = f"@{prefix}*?\r".encode("ascii")
+            elif separator == "#":
+                self._check_models(
+                    "Multi-Zone B TUNER2 (`#` separator)", V2007_TUNER2_MODELS
+                )
+                msg = f"@{prefix}#?\r".encode("ascii")
             else:
                 msg = encode_query(prefix)
             _LOGGER.debug("Querying: %s", msg)
@@ -416,11 +434,19 @@ class MarantzV2007Receiver:
     # ----- Dispatch -----------------------------------------------------------
 
     def _dispatch(self, prefix: str, separator: str, value: str) -> bool:
-        # Multi Room B uses `=`; HD Radio uses `*`.
         if separator == "=":
             return self._apply_multiroom(self._state.multi_room_b, prefix, value)
         if separator == "*":
-            return self._apply_hd_radio(prefix, value)
+            # HD Radio metadata vs TUNER2 status — same separator, different
+            # prefix families.
+            if prefix in _HD_RADIO_PREFIXES:
+                return self._apply_hd_radio(prefix, value)
+            # TUNER2 status (SR9600 family). State exposure for TUNER2 is not
+            # modelled yet — silently accept so the read loop doesn't log noise.
+            return False
+        if separator == "#":
+            # Multi-Zone B TUNER2 (SR9600 family); not modelled.
+            return False
 
         # Main-zone vs Multi Room A is determined by prefix family.
         if prefix in _MULTI_ROOM_PREFIXES:

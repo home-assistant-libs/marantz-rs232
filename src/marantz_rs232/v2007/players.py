@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .const import (
+    V2007_COMPONENT2_MODELS,
+    V2007_HD_RADIO_MODELS,
     V2007Component2,
     V2007Cursor,
     V2007DolbyHeadphone,
@@ -291,7 +293,9 @@ class V2007MainPlayer:
 
     async def set_component2(self, mode: V2007Component2) -> None:
         """Set component2 routing (SR8002 only)."""
-        self._receiver._check_sr8002("Component2 select (CM2)")
+        self._receiver._check_models(
+            "Component2 select (CM2)", V2007_COMPONENT2_MODELS
+        )
         await self._receiver._send_command("CM2", mode.value)
 
     # ----- Surround / processing --------------------------------------------
@@ -444,13 +448,17 @@ class V2007MainPlayer:
         await self._receiver._send_command("TFQ", "4")
 
     async def tuner_hd_auto_up(self) -> None:
-        """HD Radio auto-up (SR8002 only)."""
-        self._receiver._check_sr8002("HD Radio tuner auto-up (TFQ:5)")
+        """HD Radio auto-up."""
+        self._receiver._check_models(
+            "HD Radio tuner auto-up (TFQ:5)", V2007_HD_RADIO_MODELS
+        )
         await self._receiver._send_command("TFQ", "5")
 
     async def tuner_hd_auto_down(self) -> None:
-        """HD Radio auto-down (SR8002 only)."""
-        self._receiver._check_sr8002("HD Radio tuner auto-down (TFQ:6)")
+        """HD Radio auto-down."""
+        self._receiver._check_models(
+            "HD Radio tuner auto-down (TFQ:6)", V2007_HD_RADIO_MODELS
+        )
         await self._receiver._send_command("TFQ", "6")
 
     async def set_tuner_preset(self, preset: int) -> None:
@@ -472,7 +480,9 @@ class V2007MainPlayer:
 
     async def set_tuner_mode(self, mode: V2007TunerMode) -> None:
         if mode is V2007TunerMode.DIGITAL_AUTO:
-            self._receiver._check_sr8002("HD Radio digital-auto tuner mode (TMD:3)")
+            self._receiver._check_models(
+                "HD Radio digital-auto tuner mode (TMD:3)", V2007_HD_RADIO_MODELS
+            )
         await self._receiver._send_command("TMD", mode.value)
 
     async def tuner_mode_toggle(self) -> None:

@@ -2396,3 +2396,35 @@ async def test_ms_smart_event_does_not_change_surround(receiver, mock_serial):
 
     assert receiver._state.main_zone.surround_mode == "STEREO"
     assert len(states) == 0
+
+
+# -- Per-model input map --------------------------------------------------
+
+
+def test_v2015_supported_inputs_covers_all_models() -> None:
+    from marantz_rs232 import V2015_SUPPORTED_INPUTS, V2015InputSource, V2015Model
+
+    for model in V2015Model:
+        assert model in V2015_SUPPORTED_INPUTS, model
+        inputs = V2015_SUPPORTED_INPUTS[model]
+        assert isinstance(inputs, frozenset)
+        assert all(isinstance(s, V2015InputSource) for s in inputs)
+
+
+def test_av8802_and_av8802a_share_input_set() -> None:
+    from marantz_rs232 import V2015_SUPPORTED_INPUTS, V2015Model
+
+    assert (
+        V2015_SUPPORTED_INPUTS[V2015Model.AV8802]
+        == V2015_SUPPORTED_INPUTS[V2015Model.AV8802A]
+    )
+
+
+def test_nr1504_lacks_high_end_inputs() -> None:
+    """NR1504 doesn't expose PHONO or HDRADIO."""
+    from marantz_rs232 import V2015_SUPPORTED_INPUTS, V2015InputSource, V2015Model
+
+    nr1504 = V2015_SUPPORTED_INPUTS[V2015Model.NR1504]
+    assert V2015InputSource.PHONO not in nr1504
+    assert V2015InputSource.HDRADIO not in nr1504
+    assert V2015InputSource.BD not in nr1504  # NR1504 has no Blu-ray input
