@@ -3,7 +3,8 @@
 Usage:
     python -m marantz_rs232 /dev/ttyUSB0
     python -m marantz_rs232 /dev/ttyUSB0 --probe
-    python -m marantz_rs232 /dev/ttyUSB0 --legacy
+    python -m marantz_rs232 /dev/ttyUSB0 --v2007
+    python -m marantz_rs232 /dev/ttyUSB0 --v2003
     python -m marantz_rs232 /dev/ttyUSB0 --detect
 """
 
@@ -14,13 +15,16 @@ import asyncio
 import sys
 
 from . import (
-    V2007Model,
-    V2007ReceiverState,
+    MarantzV2003Receiver,
     MarantzV2007Receiver,
     MarantzV2015Receiver,
+    V2003ReceiverState,
+    V2007Model,
+    V2007ReceiverState,
     V2015ReceiverState,
     probe,
 )
+from .v2003 import V2003_SOURCE_NAMES, V2003_SURROUND_NAMES
 from .v2007 import V2007_SOURCE_NAMES, V2007_SURROUND_NAMES
 
 
@@ -280,6 +284,129 @@ def _print_legacy_state(state: V2007ReceiverState) -> None:
     print()
 
 
+def _print_v2003_state(state: V2003ReceiverState) -> None:
+    print()
+    print(f"=== Receiver Status (v2003 / SR9300/8300-era, ID {state.device_id}) ===")
+    print()
+
+    m = state.main
+
+    print(
+        f"  Power:           {'ON' if m.power else 'OFF' if m.power is not None else '?'}"
+    )
+    print(f"  Volume:          {_format_db(m.volume)}")
+    print(
+        f"  Mute:            {'ON' if m.mute else 'OFF' if m.mute is not None else '?'}"
+    )
+    if m.attenuator is not None:
+        print(f"  Attenuator:      {'ON' if m.attenuator else 'OFF'}")
+    if m.video_mute is not None:
+        print(f"  Video mute:      {'ON' if m.video_mute else 'OFF'}")
+    if m.multi_channel_input:
+        print("  Audio source:    MULTI-CHANNEL INPUT")
+    else:
+        if m.video_input is not None:
+            v_name = V2003_SOURCE_NAMES.get(m.video_input.value, "")
+            print(f"  Video source:    {m.video_input.name}{f' ({v_name})' if v_name else ''}")
+        if m.audio_input is not None:
+            a_name = V2003_SOURCE_NAMES.get(m.audio_input.value, "")
+            print(f"  Audio source:    {m.audio_input.name}{f' ({a_name})' if a_name else ''}")
+    if m.input_mode is not None:
+        print(f"  Input mode:      {m.input_mode.name}")
+
+    if m.surround_mode is not None:
+        sur_name = V2003_SURROUND_NAMES.get(m.surround_mode.value, "")
+        print(f"  Surround mode:   {m.surround_mode.name}{f' ({sur_name})' if sur_name else ''}")
+
+    if m.bass is not None:
+        print(f"  Bass:            {m.bass:+d} dB")
+    if m.treble is not None:
+        print(f"  Treble:          {m.treble:+d} dB")
+
+    if m.night_mode is not None:
+        print(f"  Night mode:      {'ON' if m.night_mode else 'OFF'}")
+    if m.f_direct is not None:
+        print(f"  F-direct:        {'ON' if m.f_direct else 'OFF'}")
+
+    if m.tuner_frequency is not None or m.tuner_preset is not None or m.tuner_mode is not None:
+        print()
+        print("  Tuner:")
+        if m.tuner_band is not None:
+            print(f"    Band:        {m.tuner_band.value}")
+        if m.tuner_frequency is not None:
+            unit = "MHz" if m.tuner_band and m.tuner_band.value == "FM" else "kHz"
+            print(f"    Frequency:   {m.tuner_frequency:.2f} {unit}")
+        if m.tuner_preset is not None:
+            print(f"    Preset:      {m.tuner_preset}")
+        if m.tuner_mode is not None:
+            print(f"    Mode:        {m.tuner_mode.name}")
+
+    if m.sleep_minutes is not None:
+        print(
+            f"  Sleep:           {f'{m.sleep_minutes} min' if m.sleep_minutes else 'OFF'}"
+        )
+    if m.display is not None:
+        print(f"  Display:         {m.display.name}")
+    if m.osd is not None:
+        print(f"  OSD:             {'ON' if m.osd else 'OFF'}")
+    if m.menu_visible is not None:
+        print(f"  Menu:            {'ON' if m.menu_visible else 'OFF'}")
+
+    sig: list[str] = []
+    if m.signal_format is not None:
+        sig.append(f"format: {m.signal_format.name}")
+    if m.sampling_frequency is not None:
+        sig.append(f"fs: {m.sampling_frequency.name}")
+    if m.channel_status_raw is not None:
+        sig.append(f"chan: {m.channel_status_raw}")
+    if sig:
+        print(f"  Signal:          {' / '.join(sig)}")
+
+    if m.test_tone is not None and m.test_tone.name != "OFF":
+        print(f"  Test tone:       {m.test_tone.name} ({m.test_tone_mode.name if m.test_tone_mode else '?'})")
+
+    mr = state.multi_room
+    if mr.enabled is not None:
+        print()
+        print("  Multi room:")
+        print(f"    Enabled:     {'ON' if mr.enabled else 'OFF'}")
+        if mr.speaker_on is not None:
+            print(f"    Speaker:     {'ON' if mr.speaker_on else 'OFF'}")
+        if mr.audio_input is not None:
+            a_name = V2003_SOURCE_NAMES.get(mr.audio_input.value, "")
+            print(f"    Audio src:   {mr.audio_input.name}{f' ({a_name})' if a_name else ''}")
+        if mr.volume is not None:
+            print(f"    Volume:      {_format_db(mr.volume)}")
+        if mr.mute is not None:
+            print(f"    Mute:        {'ON' if mr.mute else 'OFF'}")
+        if mr.volume_mode is not None:
+            print(f"    Vol mode:    {mr.volume_mode.name}")
+        if mr.sleep_minutes is not None:
+            print(
+                f"    Sleep:       {f'{mr.sleep_minutes} min' if mr.sleep_minutes else 'OFF'}"
+            )
+
+    print()
+
+
+async def _run_v2003(port: str, device_id: str = "1") -> None:
+    receiver = MarantzV2003Receiver(port, device_id=device_id)
+
+    print(f"Connecting to {port} (v2003 protocol, ID={device_id}, 4800 baud + RTS/CTS)...")
+    try:
+        await receiver.connect()
+        print("Querying receiver state...")
+        await receiver.query_state()
+    except ConnectionError as err:
+        print(f"Error: {err}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        _print_v2003_state(receiver.state)
+    finally:
+        await receiver.disconnect()
+
+
 async def _run_modern(port: str, probe_sources: bool) -> None:
     receiver = MarantzV2015Receiver(port)
 
@@ -328,9 +455,11 @@ async def _run_legacy(port: str, model: V2007Model = V2007Model.GENERIC) -> None
 async def _run(
     port: str,
     probe_sources: bool,
-    legacy: bool,
+    v2007: bool,
+    v2003: bool,
     detect: bool,
-    legacy_model: V2007Model,
+    v2007_model: V2007Model,
+    v2003_device_id: str,
 ) -> None:
     if detect:
         print(f"Probing protocol on {port}...")
@@ -341,13 +470,20 @@ async def _run(
             sys.exit(1)
         print(f"Detected: {cls.__name__}")
         if cls is MarantzV2007Receiver:
-            await _run_legacy(port, legacy_model)
+            await _run_legacy(port, v2007_model)
+            return
+        if cls is MarantzV2003Receiver:
+            await _run_v2003(port, v2003_device_id)
             return
         await _run_modern(port, probe_sources)
         return
 
-    if legacy:
-        await _run_legacy(port, legacy_model)
+    if v2007:
+        await _run_legacy(port, v2007_model)
+        return
+
+    if v2003:
+        await _run_v2003(port, v2003_device_id)
         return
 
     await _run_modern(port, probe_sources)
@@ -361,14 +497,22 @@ def main() -> None:
     parser.add_argument(
         "--probe",
         action="store_true",
-        help="Probe available input sources (modern protocol only)",
+        help="Probe available input sources (v2015 protocol only)",
     )
-    parser.add_argument(
+    protocol_group = parser.add_mutually_exclusive_group()
+    protocol_group.add_argument(
+        "--v2007",
         "--legacy",
         action="store_true",
-        help="Use the legacy SR7002-era @CMD: protocol",
+        dest="v2007",
+        help="Use the v2007 SR7002-era @CMD: protocol",
     )
-    parser.add_argument(
+    protocol_group.add_argument(
+        "--v2003",
+        action="store_true",
+        help="Use the v2003 SR9300/SR8300-era @<ID><CODE> protocol (4800 baud + RTS/CTS)",
+    )
+    protocol_group.add_argument(
         "--detect",
         action="store_true",
         help="Auto-detect which protocol the receiver speaks before connecting",
@@ -378,23 +522,28 @@ def main() -> None:
         choices=[m.value for m in V2007Model],
         default=V2007Model.GENERIC.value,
         help=(
-            "Specific legacy model. Picks generic baseline by default; "
+            "Specific v2007 model. Picks generic baseline by default; "
             "select SR8002 to silence warnings about Multi Room B / HD Radio "
             "extensions and unlock those features."
         ),
     )
+    parser.add_argument(
+        "--device-id",
+        default="1",
+        choices=list("0123456789"),
+        help="v2003 device ID (the digit configured on the receiver). Default: 1",
+    )
     args = parser.parse_args()
-
-    if args.legacy and args.detect:
-        parser.error("--legacy and --detect are mutually exclusive")
 
     asyncio.run(
         _run(
             args.port,
             args.probe,
-            args.legacy,
+            args.v2007,
+            args.v2003,
             args.detect,
             V2007Model(args.model),
+            args.device_id,
         )
     )
 

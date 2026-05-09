@@ -27,6 +27,7 @@ from .const import (
     DEFAULT_DEVICE_ID,
     NAK_BYTE,
     POWER_STATUS_CODES,
+    SURROUND_STATUS_CODES,
     V2003_BAUD_RATE,
     V2003_COMMAND_TIMEOUT,
     V2003_TERMINATOR,
@@ -37,7 +38,6 @@ from .const import (
     V2003SamplingFrequency,
     V2003SignalFormat,
     V2003Source,
-    V2003SurroundMode,
     V2003TestTone,
     V2003TestToneMode,
     V2003TunerBand,
@@ -400,10 +400,10 @@ class MarantzV2003Receiver:
             return _set_attr(m, "attenuator", payload == "K1")
 
         if head == "L":
-            try:
-                return _set_attr(m, "surround_mode", V2003SurroundMode(payload[1:]))
-            except (ValueError, IndexError):
+            mode = SURROUND_STATUS_CODES.get(payload)
+            if mode is None:
                 return False
+            return _set_attr(m, "surround_mode", mode)
 
         if head == "M":
             try:

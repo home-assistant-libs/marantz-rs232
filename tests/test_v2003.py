@@ -537,13 +537,77 @@ async def test_audio_status_ch_decodes_as_tuner(
     assert receiver.state.main.multi_channel_input is False
 
 
-async def test_main_player_surround(
+@pytest.mark.parametrize(
+    "mode, code",
+    [
+        (V2003SurroundMode.AUTO, "F0"),
+        (V2003SurroundMode.THX_MUSIC, "F1"),         # status-side this is L4
+        (V2003SurroundMode.DTS_ES, "F5"),
+        (V2003SurroundMode.DOLBY_PROLOGIC, "F7"),
+        (V2003SurroundMode.STEREO, "FG"),            # status-side this is LM
+        (V2003SurroundMode.NEO6_CINEMA, "FI"),
+        (V2003SurroundMode.CSII_MONO, "FO"),
+    ],
+)
+async def test_main_player_set_surround_mode(
+    receiver: MarantzV2003Receiver,
+    mock_serial: _MockV2003Serial,
+    mode: V2003SurroundMode,
+    code: str,
+) -> None:
+    await receiver.main.set_surround_mode(mode)
+    assert mock_serial.command_log == [code]
+
+
+async def test_main_player_surround_steppers(
     receiver: MarantzV2003Receiver, mock_serial: _MockV2003Serial
 ) -> None:
-    await receiver.main.set_surround_mode(V2003SurroundMode.STEREO)
-    await receiver.main.set_surround_mode(V2003SurroundMode.AUTO)
     await receiver.main.surround_mode_next()
-    assert mock_serial.command_log == ["FM", "F0", "FX"]
+    await receiver.main.surround_mode_prev()
+    assert mock_serial.command_log == ["FX", "FY"]
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [
+        V2003SurroundMode.THX_5_1,         # status-only umbrella
+        V2003SurroundMode.DTS_MUSIC,       # status-only
+        V2003SurroundMode.DTS_CINEMA,
+        V2003SurroundMode.DOLBY_DIGITAL,
+        V2003SurroundMode.MONO,
+    ],
+)
+async def test_main_player_set_surround_rejects_status_only_modes(
+    receiver: MarantzV2003Receiver, mode: V2003SurroundMode
+) -> None:
+    with pytest.raises(ValueError):
+        await receiver.main.set_surround_mode(mode)
+
+
+@pytest.mark.parametrize(
+    "wire, mode",
+    [
+        ("L0", V2003SurroundMode.AUTO),
+        ("L1", V2003SurroundMode.THX_5_1),         # cmd-side has nothing at "1"
+        ("L4", V2003SurroundMode.THX_MUSIC),       # cmd-side this is F1
+        ("L5", V2003SurroundMode.DTS_MUSIC),
+        ("LA", V2003SurroundMode.DOLBY_DIGITAL),
+        ("LB", V2003SurroundMode.DOLBY_PROLOGIC),
+        ("LM", V2003SurroundMode.STEREO),
+        ("LN", V2003SurroundMode.MONO),
+        ("LO", V2003SurroundMode.THX_ULTRA2),
+        ("LP", V2003SurroundMode.CSII_MONO),
+    ],
+)
+async def test_surround_status_decoding(
+    receiver: MarantzV2003Receiver,
+    mock_serial: _MockV2003Serial,
+    wire: str,
+    mode: V2003SurroundMode,
+) -> None:
+    mock_serial.query_responses["L"] = wire
+    await receiver._query("L")
+    assert receiver.state.main.surround_mode is mode
 
 
 async def test_main_player_tuner(

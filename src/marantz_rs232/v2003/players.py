@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .const import V2003Power, V2003Source, V2003SurroundMode
+from .const import (
+    SURROUND_COMMAND_CODES,
+    V2003Power,
+    V2003Source,
+    V2003SurroundMode,
+)
 from .protocol import encode_main_source, encode_multi_source, encode_volume
 
 if TYPE_CHECKING:
@@ -88,7 +93,16 @@ class V2003MainPlayer:
 
     # -- Surround --
     async def set_surround_mode(self, mode: V2003SurroundMode) -> None:
-        await self._receiver._send_command(f"F{mode.value}")
+        """Set the surround mode. Raises ValueError for status-only modes
+        (e.g. ``THX_5_1``, ``DTS_MUSIC``, ``MONO``) that the receiver only
+        reaches automatically.
+        """
+        code = SURROUND_COMMAND_CODES.get(mode)
+        if code is None:
+            raise ValueError(
+                f"V2003SurroundMode.{mode.name} is status-only and has no set command"
+            )
+        await self._receiver._send_command(code)
 
     async def surround_mode_next(self) -> None:
         await self._receiver._send_command("FX")
