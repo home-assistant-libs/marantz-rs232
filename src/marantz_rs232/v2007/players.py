@@ -1,4 +1,4 @@
-"""Player abstractions for the legacy (SR7002-era) Marantz protocol."""
+"""Player abstractions for the v2007 (SR7002-era) Marantz protocol."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
 
 class V2007MainPlayer:
-    """Stateful control surface for the main zone of a legacy Marantz receiver."""
+    """Stateful control surface for the main zone of a v2007 Marantz receiver."""
 
     def __init__(
         self, receiver: MarantzV2007Receiver, state: V2007MainState

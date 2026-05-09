@@ -1,4 +1,4 @@
-"""Constants and enums for the legacy (SR7002-era) Marantz protocol."""
+"""Constants and enums for the v2007 (SR7002-era) Marantz protocol."""
 
 from enum import Enum
 
@@ -17,7 +17,7 @@ NAK_BYTE = "\x15"
 
 
 class V2007Model(Enum):
-    """Specific Marantz model in the legacy protocol family.
+    """Specific Marantz model in the v2007 protocol family.
 
     GENERIC: assume the documented baseline shared by all listed models.
     SR7002:  baseline; no HD Radio, no Multi Room B, no Component2.

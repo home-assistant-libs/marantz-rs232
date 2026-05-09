@@ -30,7 +30,7 @@ async def _run_probe_with_first_byte(first_byte: bytes) -> type:
         return await probe("/dev/ttyUSB0", timeout=0.5)
 
 
-async def test_probe_detects_legacy_when_first_byte_is_at_sign() -> None:
+async def test_probe_detects_v2007_when_first_byte_is_at_sign() -> None:
     cls = await _run_probe_with_first_byte(b"@PWR:2\r")
     assert cls is MarantzV2007Receiver
 

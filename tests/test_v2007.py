@@ -1,4 +1,4 @@
-"""Tests for the legacy (SR7002-era) Marantz protocol."""
+"""Tests for the v2007 (SR7002-era) Marantz protocol."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from marantz_rs232.v2007.protocol import (
     parse_volume,
 )
 
-# Speed up the legacy command timeout for the test suite.
+# Speed up the v2007 command timeout for the test suite.
 v2007_receiver.V2007_COMMAND_TIMEOUT = 0.02
 
 
@@ -103,7 +103,7 @@ def test_parse_line_returns_none_for_ack_or_empty(line: str) -> None:
     assert parse_line(line) is None
 
 
-# -- MockSerialConnection (legacy variant) ------------------------------------
+# -- MockSerialConnection (v2007 variant) ------------------------------------
 
 
 class _MockSerial:

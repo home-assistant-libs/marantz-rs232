@@ -1,4 +1,4 @@
-"""Wire-format encoding/decoding for the legacy (`@CMD:VALUE\\r`) protocol."""
+"""Wire-format encoding/decoding for the v2007 (`@CMD:VALUE\r`) protocol."""
 
 from __future__ import annotations
 

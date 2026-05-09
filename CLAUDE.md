@@ -14,7 +14,7 @@ All public symbols are prefixed with `V2003`, `V2007`, or `V2015` to keep the th
 src/marantz_rs232/
   __init__.py    -- Public API surface re-exporting both protocols + `probe()`
   probe.py       -- async probe(port) — sniffs first response byte to pick protocol
-  __main__.py    -- CLI: python -m marantz_rs232 PORT [--legacy] [--detect] [--model M]
+  __main__.py    -- CLI: python -m marantz_rs232 PORT [--v2007] [--v2003] [--detect] [--model M]
   v2015/         -- Modern (2015-era) protocol implementation
     __init__.py
     const.py     -- V2015 constants and enums (V2015InputSource, V2015SurroundMode, ...)
@@ -22,7 +22,7 @@ src/marantz_rs232/
     state.py     -- V2015ReceiverState / V2015MainZoneState / V2015ZoneState dataclasses
     receiver.py  -- MarantzV2015Receiver class with read loop and message dispatch
     players.py   -- V2015MainPlayer, V2015ZonePlayer, V2015Zone4Player
-  v2007/         -- Legacy (SR7002-era) protocol implementation
+  v2007/         -- v2007 (SR7002-era) protocol implementation
     __init__.py
     const.py     -- V2007 enums (V2007Model, V2007Source, V2007SurroundCode, ...)
     protocol.py  -- @CMD: framing, volume / tone / tuner-frequency / lip-sync codecs

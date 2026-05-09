@@ -1,4 +1,4 @@
-"""Runtime state dataclasses for the legacy (SR7002-era) Marantz protocol."""
+"""Runtime state dataclasses for the v2007 (SR7002-era) Marantz protocol."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from .const import (
 
 @dataclass
 class V2007MainState:
-    """State for the main zone of a legacy Marantz receiver."""
+    """State for the main zone of a v2007 Marantz receiver."""
 
     # Power / mute
     power: bool | None = None
@@ -114,7 +114,7 @@ class V2007MainState:
 
 @dataclass
 class V2007MultiRoomState:
-    """State for a multi-room (MR-A or MR-B) zone of a legacy Marantz receiver.
+    """State for a multi-room (MR-A or MR-B) zone of a v2007 Marantz receiver.
 
     Multi Room A uses `:` separator on the wire (MPW/MSP/...), Multi Room B
     uses `=` (SR8002 only). Both share this state schema.

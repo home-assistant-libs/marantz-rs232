@@ -1,4 +1,4 @@
-"""Legacy (SR7002-era) Marantz RS-232 protocol support.
+"""v2007 (SR7002-era) Marantz RS-232 protocol support.
 
 Targets the 2007-2010 Marantz lineup that uses the `@CMD:VALUE\\r` framing:
 SR7002, SR8002, SR6003, SR7003, SR8003, SR5004, SR6004, AV7005, AV8003.

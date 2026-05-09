@@ -143,9 +143,9 @@ def _print_state(state: V2015ReceiverState) -> None:
     print()
 
 
-def _print_legacy_state(state: V2007ReceiverState) -> None:
+def _print_v2007_state(state: V2007ReceiverState) -> None:
     print()
-    print("=== Receiver Status (legacy / SR7002-era) ===")
+    print("=== Receiver Status (v2007 / SR7002-era) ===")
     print()
 
     m = state.main
@@ -434,10 +434,10 @@ async def _run_modern(port: str, probe_sources: bool) -> None:
         await receiver.disconnect()
 
 
-async def _run_legacy(port: str, model: V2007Model = V2007Model.GENERIC) -> None:
+async def _run_v2007(port: str, model: V2007Model = V2007Model.GENERIC) -> None:
     receiver = MarantzV2007Receiver(port, model=model)
 
-    print(f"Connecting to {port} (legacy protocol, model={model.value})...")
+    print(f"Connecting to {port} (v2007 protocol, model={model.value})...")
     try:
         await receiver.connect()
         print("Querying receiver state...")
@@ -447,7 +447,7 @@ async def _run_legacy(port: str, model: V2007Model = V2007Model.GENERIC) -> None
         sys.exit(1)
 
     try:
-        _print_legacy_state(receiver.state)
+        _print_v2007_state(receiver.state)
     finally:
         await receiver.disconnect()
 
@@ -470,7 +470,7 @@ async def _run(
             sys.exit(1)
         print(f"Detected: {cls.__name__}")
         if cls is MarantzV2007Receiver:
-            await _run_legacy(port, v2007_model)
+            await _run_v2007(port, v2007_model)
             return
         if cls is MarantzV2003Receiver:
             await _run_v2003(port, v2003_device_id)
@@ -479,7 +479,7 @@ async def _run(
         return
 
     if v2007:
-        await _run_legacy(port, v2007_model)
+        await _run_v2007(port, v2007_model)
         return
 
     if v2003:
@@ -502,9 +502,7 @@ def main() -> None:
     protocol_group = parser.add_mutually_exclusive_group()
     protocol_group.add_argument(
         "--v2007",
-        "--legacy",
         action="store_true",
-        dest="v2007",
         help="Use the v2007 SR7002-era @CMD: protocol",
     )
     protocol_group.add_argument(

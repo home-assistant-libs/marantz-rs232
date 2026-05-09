@@ -1,4 +1,4 @@
-"""Receiver implementation for the legacy (SR7002-era) Marantz protocol."""
+"""Receiver implementation for the v2007 (SR7002-era) Marantz protocol."""
 
 from __future__ import annotations
 
@@ -223,14 +223,14 @@ class MarantzV2007Receiver:
             _LOGGER.warning("Failed to enable auto status feedback", exc_info=True)
 
         _LOGGER.info(
-            "Connected to legacy Marantz receiver on %s (model=%s)",
+            "Connected to v2007 Marantz receiver on %s (model=%s)",
             self._port,
             self._model.value,
         )
 
     async def disconnect(self) -> None:
         await self._teardown()
-        _LOGGER.info("Disconnected from legacy Marantz receiver")
+        _LOGGER.info("Disconnected from v2007 Marantz receiver")
 
     async def query_state(self) -> None:
         """Query each documented prefix to refresh the main-zone `state`."""
@@ -714,7 +714,7 @@ class MarantzV2007Receiver:
 
         # Unknown prefixes flow through quietly. Some auto-feedback layers
         # surface prefixes we don't decode yet.
-        _LOGGER.debug("Unhandled legacy main prefix: %s = %s", prefix, value)
+        _LOGGER.debug("Unhandled v2007 main prefix: %s = %s", prefix, value)
         return False
 
     # ----- Multi Room (A or B) ------------------------------------------------
