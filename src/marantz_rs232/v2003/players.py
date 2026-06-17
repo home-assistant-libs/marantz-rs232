@@ -40,7 +40,7 @@ class V2003MainPlayer:
         return self._state.mute
 
     @property
-    def audio_input(self) -> V2003Source | None:
+    def input_source(self) -> V2003Source | None:
         return self._state.audio_input
 
     @property
@@ -228,7 +228,7 @@ class V2003MultiRoomPlayer:
 
     # -- Properties --
     @property
-    def enabled(self) -> bool | None:
+    def power(self) -> bool | None:
         return self._state.enabled
 
     @property
@@ -240,7 +240,7 @@ class V2003MultiRoomPlayer:
         return self._state.mute
 
     @property
-    def audio_input(self) -> V2003Source | None:
+    def input_source(self) -> V2003Source | None:
         return self._state.audio_input
 
     @property
@@ -248,13 +248,13 @@ class V2003MultiRoomPlayer:
         return self._state.video_input
 
     # -- Power / state --
-    async def on(self) -> None:
+    async def power_on(self) -> None:
         await self._receiver._send_command("L2")
 
-    async def off(self) -> None:
+    async def power_off(self) -> None:
         await self._receiver._send_command("L0")
 
-    async def toggle(self) -> None:
+    async def power_toggle(self) -> None:
         await self._receiver._send_command("L1")
 
     async def speaker_on(self) -> None:
@@ -264,7 +264,7 @@ class V2003MultiRoomPlayer:
         await self._receiver._send_command("N4")
 
     # -- Volume / mute --
-    async def mute(self) -> None:
+    async def mute_toggle(self) -> None:
         """Toggle multi-room mute."""
         await self._receiver._send_command("M0")
 

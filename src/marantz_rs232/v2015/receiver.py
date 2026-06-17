@@ -141,7 +141,7 @@ class MarantzV2015Receiver:
     async def power_on(self) -> None:
         await self._send_command("PW", "ON")
 
-    async def power_standby(self) -> None:
+    async def power_off(self) -> None:
         await self._send_command("PW", "STANDBY")
 
     async def query_power(self) -> bool:

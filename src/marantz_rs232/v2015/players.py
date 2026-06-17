@@ -79,13 +79,13 @@ class _BasePlayer:
     async def power_on(self) -> None:
         await self._receiver._send_command(self._power_command, "ON")
 
-    async def power_standby(self) -> None:
+    async def power_off(self) -> None:
         await self._receiver._send_command(
             self._power_command,
             self._power_standby_parameter,
         )
 
-    async def select_input_source(self, source: V2015InputSource) -> None:
+    async def select_source(self, source: V2015InputSource) -> None:
         await self._receiver._send_command(
             self._input_source_command,
             source.value,
@@ -631,10 +631,10 @@ class V2015Zone4Player:
     async def power_on(self) -> None:
         await self._receiver._send_command("Z4", "ON")
 
-    async def power_standby(self) -> None:
+    async def power_off(self) -> None:
         await self._receiver._send_command("Z4", "OFF")
 
-    async def select_input_source(self, source: V2015InputSource) -> None:
+    async def select_source(self, source: V2015InputSource) -> None:
         await self._receiver._send_command("Z4", source.value)
 
     async def cancel_input_source(self) -> None:

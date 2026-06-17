@@ -92,6 +92,15 @@ class V2007MainPlayer:
         return self._state.source_audio
 
     @property
+    def input_source(self) -> V2007Source | None:
+        if self._state.source_audio is None:
+            return None
+        try:
+            return V2007Source(self._state.source_audio)
+        except ValueError:
+            return None
+
+    @property
     def speaker_a(self) -> bool | None:
         return self._state.speaker_a
 
@@ -616,6 +625,15 @@ class V2007MultiRoomPlayer:
     @property
     def source_audio(self) -> str | None:
         return self._state.source_audio
+
+    @property
+    def input_source(self) -> V2007Source | None:
+        if self._state.source_audio is None:
+            return None
+        try:
+            return V2007Source(self._state.source_audio)
+        except ValueError:
+            return None
 
     @property
     def stereo_mode(self) -> V2007StereoMode | None:

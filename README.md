@@ -37,7 +37,7 @@ async def main():
 
     # Control the receiver
     await receiver.main.set_volume(-30.0)
-    await receiver.main.select_input_source(InputSource.BD)
+    await receiver.main.select_source(InputSource.BD)
 
     await receiver.disconnect()
 
@@ -150,7 +150,7 @@ unsub()  # stop receiving events
 
 ```python
 await receiver.power_on()
-await receiver.power_standby()
+await receiver.power_off()
 power = await receiver.query_power()  # bool
 ```
 
@@ -158,7 +158,7 @@ power = await receiver.query_power()  # bool
 
 ```python
 await receiver.main.power_on()
-await receiver.main.power_standby()
+await receiver.main.power_off()
 on = await receiver.main.query_power()  # bool
 ```
 
@@ -201,7 +201,7 @@ muted = await receiver.main.query_mute()  # bool
 ```python
 from marantz_rs232 import InputSource
 
-await receiver.main.select_input_source(InputSource.BD)
+await receiver.main.select_source(InputSource.BD)
 source = await receiver.main.query_input_source()  # InputSource enum
 ```
 
@@ -365,8 +365,8 @@ Zone 2 and Zone 3 can be controlled independently. Zone state (power, source, vo
 ```python
 # Zone 2
 await receiver.zone_2.power_on()
-await receiver.zone_2.power_standby()
-await receiver.zone_2.select_input_source(InputSource.TUNER)
+await receiver.zone_2.power_off()
+await receiver.zone_2.select_source(InputSource.TUNER)
 await receiver.zone_2.set_volume(-30.0)
 await receiver.zone_2.volume_up()
 await receiver.zone_2.volume_down()
@@ -375,8 +375,8 @@ await receiver.zone_2.mute_off()
 
 # Zone 3
 await receiver.zone_3.power_on()
-await receiver.zone_3.power_standby()
-await receiver.zone_3.select_input_source(InputSource.CD)
+await receiver.zone_3.power_off()
+await receiver.zone_3.select_source(InputSource.CD)
 await receiver.zone_3.set_volume(-35.0)
 await receiver.zone_3.mute_on()
 await receiver.zone_3.mute_off()

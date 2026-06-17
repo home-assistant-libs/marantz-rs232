@@ -188,6 +188,10 @@ class MarantzV2003Receiver:
     # -- Public API --
 
     @property
+    def connected(self) -> bool:
+        return self._connected
+
+    @property
     def state(self) -> V2003ReceiverState:
         return copy.deepcopy(self._state)
 

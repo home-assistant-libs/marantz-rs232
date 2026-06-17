@@ -307,7 +307,7 @@ async def test_power_on(receiver, mock_serial):
 
 
 async def test_power_standby(receiver, mock_serial):
-    await receiver.power_standby()
+    await receiver.power_off()
     assert b"PWSTANDBY\r" in mock_serial.written_data
 
 
@@ -317,7 +317,7 @@ async def test_main_player_power_on(receiver, mock_serial):
 
 
 async def test_main_player_power_standby(receiver, mock_serial):
-    await receiver.main.power_standby()
+    await receiver.main.power_off()
     assert b"ZMOFF\r" in mock_serial.written_data
 
 
@@ -384,12 +384,12 @@ async def test_mute_off(receiver, mock_serial):
 
 
 async def test_select_input_source(receiver, mock_serial):
-    await receiver.main.select_input_source(V2015InputSource.DVD)
+    await receiver.main.select_source(V2015InputSource.DVD)
     assert b"SIDVD\r" in mock_serial.written_data
 
 
 async def test_select_input_source_with_slash(receiver, mock_serial):
-    await receiver.main.select_input_source(V2015InputSource.SAT_CBL)
+    await receiver.main.select_source(V2015InputSource.SAT_CBL)
     assert b"SISAT/CBL\r" in mock_serial.written_data
 
 
@@ -593,12 +593,12 @@ async def test_zone2_power_on(receiver, mock_serial):
 
 
 async def test_zone2_power_standby(receiver, mock_serial):
-    await receiver.zone_2.power_standby()
+    await receiver.zone_2.power_off()
     assert b"Z2OFF\r" in mock_serial.written_data
 
 
 async def test_zone2_select_input_source(receiver, mock_serial):
-    await receiver.zone_2.select_input_source(V2015InputSource.CD)
+    await receiver.zone_2.select_source(V2015InputSource.CD)
     assert b"Z2CD\r" in mock_serial.written_data
 
 
@@ -631,12 +631,12 @@ async def test_zone3_power_on(receiver, mock_serial):
 
 
 async def test_zone3_power_standby(receiver, mock_serial):
-    await receiver.zone_3.power_standby()
+    await receiver.zone_3.power_off()
     assert b"Z3OFF\r" in mock_serial.written_data
 
 
 async def test_zone3_select_input_source(receiver, mock_serial):
-    await receiver.zone_3.select_input_source(V2015InputSource.TUNER)
+    await receiver.zone_3.select_source(V2015InputSource.TUNER)
     assert b"Z3TUNER\r" in mock_serial.written_data
 
 
@@ -1670,12 +1670,12 @@ async def test_zone4_power_on(receiver, mock_serial):
 
 
 async def test_zone4_power_standby(receiver, mock_serial):
-    await receiver.zone_4.power_standby()
+    await receiver.zone_4.power_off()
     assert b"Z4OFF\r" in mock_serial.written_data
 
 
 async def test_zone4_select_input_source(receiver, mock_serial):
-    await receiver.zone_4.select_input_source(V2015InputSource.DVD)
+    await receiver.zone_4.select_source(V2015InputSource.DVD)
     assert b"Z4DVD\r" in mock_serial.written_data
 
 

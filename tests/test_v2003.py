@@ -629,10 +629,10 @@ async def test_main_player_direct_key_validates_range(
 async def test_multi_room_commands(
     receiver: MarantzV2003Receiver, mock_serial: _MockV2003Serial
 ) -> None:
-    await receiver.multi_room.on()
-    await receiver.multi_room.off()
+    await receiver.multi_room.power_on()
+    await receiver.multi_room.power_off()
     await receiver.multi_room.volume_up()
-    await receiver.multi_room.mute()
+    await receiver.multi_room.mute_toggle()
     await receiver.multi_room.select_source(V2003Source.DVD)
     assert mock_serial.command_log == ["L2", "L0", "M1", "M0", "Bd"]
 
