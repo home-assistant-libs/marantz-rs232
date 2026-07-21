@@ -112,3 +112,11 @@ docs/
 **v2007:** `V2007Model` (GENERIC/SR7002/SR8002), `V2007TriState`, `V2007Power`, `V2007Source`, `V2007SurroundCode`, `V2007THXSet`, `V2007EQMode`, `V2007DolbyHeadphone`, `V2007NightMode`, `V2007MDAX`, `V2007HDMIChannel`, `V2007HDMIAudioMode`, `V2007IPConverter`, `V2007Component2`, `V2007TunerMode`, `V2007Menu`, `V2007Cursor`, `V2007InputAD`, `V2007InputSignal`, `V2007InputState`, `V2007SignalFormat`, `V2007SamplingFrequency`, `V2007VolumeMode`, `V2007StereoMode`, `V2007TunerBand` (adds XM).
 
 **v2003:** `V2003Power` (TOGGLE/ON/OFF), `V2003Source` (DSS..TUNER, 17 sources), `V2003SurroundMode` (~25 codes including THX/DTS/DOLBY/CSII variants), `V2003TunerBand` (FM/AM/MW/LW), `V2003TunerMode`, `V2003InputMode` (DIGITAL/ANALOGUE), `V2003DisplayMode` (ON/OFF/AUTO_OFF + dimmer levels), `V2003TestTone`, `V2003TestToneMode`, `V2003SignalFormat`, `V2003SamplingFrequency`, `V2003MultiRoomVolumeMode` (VARIABLE/FIXED).
+
+## AI policy
+
+This project follows the [Open Home Foundation AI Policy](AI_POLICY.md).
+Autonomous contributions are not accepted: a human must review, understand,
+and be able to explain every change before it is submitted. Do not open
+issues or pull requests autonomously, and do not post comments on behalf of
+a user without their review.
