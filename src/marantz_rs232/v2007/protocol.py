@@ -44,7 +44,7 @@ def parse_volume(value: str) -> float:
     if len(value) >= 4 and value[-1] in ("0", "5"):
         whole = int(value[:-1])
         half = 0.5 if value[-1] == "5" else 0.0
-        if whole < 0:
+        if value.startswith("-"):
             return whole - half
         return whole + half
 
