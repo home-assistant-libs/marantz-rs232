@@ -6,8 +6,14 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import serialx
 
-from marantz_rs232 import MarantzV2007Receiver, MarantzV2015Receiver, probe
+from marantz_rs232 import (
+    MarantzConnectionError,
+    MarantzV2007Receiver,
+    MarantzV2015Receiver,
+    probe,
+)
 
 
 async def _run_probe_with_first_byte(first_byte: bytes) -> type:
@@ -105,3 +111,32 @@ async def test_probe_sends_both_protocol_queries() -> None:
     written_bytes = b"".join(call.args[0] for call in writer.write.call_args_list)
     assert b"@PWR:?\r" in written_bytes
     assert b"PW?\r" in written_bytes
+
+
+@pytest.mark.parametrize("phase", [1, 2])
+async def test_probe_serial_exception(phase: int) -> None:
+    """A failed open in either baud-rate phase is a connection failure."""
+    error = serialx.SerialException("Serial proxy is unavailable")
+    reader = asyncio.StreamReader()
+    reader.feed_eof()
+    writer = MagicMock()
+    writer.drain = AsyncMock()
+    writer.wait_closed = AsyncMock()
+    results = [error] if phase == 1 else [(reader, writer), error]
+
+    with (
+        patch(
+            "marantz_rs232.probe.serialx.open_serial_connection",
+            side_effect=results,
+        ) as open_connection,
+        pytest.raises(
+            MarantzConnectionError, match="Serial proxy is unavailable"
+        ) as exc_info,
+    ):
+        await probe("esphome://proxy.local/?port_name=RS232")
+
+    assert exc_info.value.__cause__ is error
+    assert open_connection.await_count == phase
+    if phase == 2:
+        writer.close.assert_called_once()
+        writer.wait_closed.assert_awaited_once()

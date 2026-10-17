@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Union
 
 import serialx
 
+from .exceptions import MarantzConnectionError
 from .v2003 import MarantzV2003Receiver, V2003_BAUD_RATE
 from .v2007 import MarantzV2007Receiver
 from .v2015 import V2015_BAUD_RATE
@@ -42,7 +43,8 @@ async def probe(port: str, *, timeout: float = PROBE_TIMEOUT) -> ReceiverClass:
        Sends ``@1?A\\r`` (power query for device ID 1) and waits for an
        ``@``-framed response.
 
-    Raises ``ConnectionError`` if no protocol responds within ``timeout``.
+    Raises ``ConnectionError`` if the port cannot be opened or no protocol
+    responds within ``timeout``.
     """
     from .v2015 import MarantzV2015Receiver  # local to avoid import cycle
 
@@ -50,7 +52,12 @@ async def probe(port: str, *, timeout: float = PROBE_TIMEOUT) -> ReceiverClass:
     log_port = port.split("?", 1)[0]
 
     # Phase 1: v2007 / v2015 at 9600 baud, no hardware flow control.
-    reader, writer = await serialx.open_serial_connection(port, baudrate=V2015_BAUD_RATE)
+    try:
+        reader, writer = await serialx.open_serial_connection(
+            port, baudrate=V2015_BAUD_RATE
+        )
+    except serialx.SerialException as err:
+        raise MarantzConnectionError(str(err)) from err
     try:
         writer.write(b"@PWR:?\r")
         writer.write(b"PW?\r")
@@ -71,9 +78,12 @@ async def probe(port: str, *, timeout: float = PROBE_TIMEOUT) -> ReceiverClass:
         return MarantzV2015Receiver
 
     # Phase 2: v2003 at 4800 baud with RTS/CTS.
-    reader, writer = await serialx.open_serial_connection(
-        port, baudrate=V2003_BAUD_RATE, rtscts=True
-    )
+    try:
+        reader, writer = await serialx.open_serial_connection(
+            port, baudrate=V2003_BAUD_RATE, rtscts=True
+        )
+    except serialx.SerialException as err:
+        raise MarantzConnectionError(str(err)) from err
     try:
         writer.write(b"@1?A\r")
         await writer.drain()

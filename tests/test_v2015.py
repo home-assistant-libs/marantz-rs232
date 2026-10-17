@@ -5,6 +5,7 @@ import logging
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import serialx
 
 from conftest import (
     DEFAULT_QUERY_RESPONSES,
@@ -2653,3 +2654,30 @@ def test_nr1504_lacks_high_end_inputs() -> None:
     assert V2015InputSource.PHONO not in nr1504
     assert V2015InputSource.HDRADIO not in nr1504
     assert V2015InputSource.BD not in nr1504  # NR1504 has no Blu-ray input
+
+
+async def test_connect_serial_exception_allows_retry(mock_serial) -> None:
+    """An unavailable serial port is a connection failure and can be retried."""
+    device = MarantzV2015Receiver("esphome://proxy.local/?port_name=RS232")
+    error = serialx.SerialException("Serial proxy is unavailable")
+    mock_serial._query_responses = dict(DEFAULT_QUERY_RESPONSES)
+
+    with patch(
+        "marantz_rs232.v2015.receiver.serialx.open_serial_connection",
+        side_effect=[error, (mock_serial.reader, mock_serial.writer)],
+    ) as open_connection:
+        with pytest.raises(
+            MarantzConnectionError, match="Serial proxy is unavailable"
+        ) as exc_info:
+            await device.connect()
+
+        assert exc_info.value.__cause__ is error
+        assert not device.connected
+        mock_serial.writer.write.assert_not_called()
+
+        try:
+            await device.connect()
+            assert device.connected
+            assert open_connection.await_count == 2
+        finally:
+            await device.disconnect()

@@ -8,6 +8,7 @@ from collections.abc import Callable
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import serialx
 
 import marantz_rs232.v2003.receiver as v2003_receiver
 from marantz_rs232 import (
@@ -950,3 +951,30 @@ def test_v2003_supported_sources_covers_all_models() -> None:
     for model in V2003Model:
         assert model in V2003_SUPPORTED_SOURCES, model
         assert V2003_SUPPORTED_SOURCES[model] == frozenset(V2003Source)
+
+
+async def test_connect_serial_exception_allows_retry(mock_serial) -> None:
+    """An unavailable serial port is a connection failure and can be retried."""
+    device = MarantzV2003Receiver("esphome://proxy.local/?port_name=RS232")
+    error = serialx.SerialException("Serial proxy is unavailable")
+    mock_serial.query_responses = dict(_DEFAULT_V2003_RESPONSES)
+
+    with patch(
+        "marantz_rs232.v2003.receiver.serialx.open_serial_connection",
+        side_effect=[error, (mock_serial.reader, mock_serial.writer)],
+    ) as open_connection:
+        with pytest.raises(
+            MarantzConnectionError, match="Serial proxy is unavailable"
+        ) as exc_info:
+            await device.connect()
+
+        assert exc_info.value.__cause__ is error
+        assert not device.connected
+        mock_serial.writer.write.assert_not_called()
+
+        try:
+            await device.connect()
+            assert device.connected
+            assert open_connection.await_count == 2
+        finally:
+            await device.disconnect()

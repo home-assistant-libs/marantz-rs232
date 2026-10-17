@@ -156,11 +156,14 @@ class MarantzV2003Receiver:
     async def connect(self) -> None:
         if self._connected:
             return
-        self._reader, self._writer = await serialx.open_serial_connection(
-            self._port,
-            baudrate=V2003_BAUD_RATE,
-            rtscts=True,
-        )
+        try:
+            self._reader, self._writer = await serialx.open_serial_connection(
+                self._port,
+                baudrate=V2003_BAUD_RATE,
+                rtscts=True,
+            )
+        except serialx.SerialException as err:
+            raise MarantzConnectionError(str(err)) from err
         self._connected = True
         self._read_task = asyncio.create_task(self._read_loop())
         # Verify the link by querying power. If the receiver doesn't answer
