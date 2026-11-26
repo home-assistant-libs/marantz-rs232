@@ -491,6 +491,8 @@ unsub = receiver.subscribe(lambda state: print(f"changed: {state.main.volume} dB
 
 `receiver.state` is a `LegacyReceiverState`. The schema differs from the modern receiver — see `marantz_rs232.legacy.LegacyMainState` for the field list.
 
+For a configured v2007 receiver that does not answer power queries in standby, use `await receiver.connect(strict=False)`. The connection stays open with unknown power state if the initial query times out. Automatic status feedback is enabled, and power-on commands remain available. Invalid responses and transport errors still fail. The default, `strict=True`, requires a valid power response.
+
 ### Auto-detect
 
 ```python

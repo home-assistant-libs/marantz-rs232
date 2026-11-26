@@ -220,8 +220,11 @@ class MarantzV2007Receiver:
 
         return unsubscribe
 
-    async def connect(self) -> None:
+    async def connect(self, *, strict: bool = True) -> None:
         """Open the serial connection.
+
+        With ``strict=False``, a missing initial power response is tolerated.
+        Invalid responses and transport errors still fail.
 
         Raises ``RuntimeError`` if already connected. Call ``disconnect()``
         first to reconnect. Raises ``MarantzConnectionError`` if the port
@@ -241,20 +244,23 @@ class MarantzV2007Receiver:
         self._read_task.add_done_callback(self._on_read_task_done)
 
         try:
-            power = await self._query("PWR")
-            if power not in (V2007Power.ON.value, V2007Power.OFF.value):
-                raise ConnectionError(
-                    f"Invalid power response from receiver on {self._log_port}: {power!r}"
-                )
+            try:
+                power = await self._query("PWR")
+            except TimeoutError:
+                if strict:
+                    raise ConnectionError(
+                        f"No response from receiver on {self._log_port}"
+                    ) from None
+                self._state.main.power = None
+            else:
+                if power not in (V2007Power.ON.value, V2007Power.OFF.value):
+                    raise ConnectionError(
+                        f"Invalid power response from receiver on {self._log_port}: {power!r}"
+                    )
 
             # Enable auto status feedback (all four layers) so subscribers see
             # spontaneous state changes.
             await self._send_command("AST", "F")
-        except TimeoutError:
-            await self.disconnect()
-            raise ConnectionError(
-                f"No response from receiver on {self._log_port}"
-            ) from None
         except BaseException:
             await self.disconnect()
             raise
